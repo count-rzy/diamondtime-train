@@ -10,6 +10,9 @@ __pycache__/
 .venv/
 venv/
 *.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
+*.sqlite3-journal
 
 # Django
 staticfiles/
@@ -30,3 +33,7 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Local private data and QA artifacts
+data/
+.local-qa/
