@@ -37,6 +37,20 @@ export const rail = {
   'rail.next_region': ['Next', 'Вперёд'],
   'rail.stops': ['Rest stops', 'Остановки'],
   'rail.follow_train': ['Follow train', 'Следить за поездом'],
+  'rail.departure_station': ['Departure station', 'Станция отправления'],
+  'rail.destination_station': ['Destination station', 'Станция назначения'],
+  'rail.current_location': ['Current train location', 'Текущее положение поезда'],
+  'rail.inspect_train': ['Inspect train position', 'Посмотреть положение поезда'],
+  'rail.single_region': [
+    'This journey has one region; there is nowhere else to navigate.',
+    'В этой поездке один регион: переходить пока некуда.',
+  ],
+  'rail.route_start': ['This is the first region.', 'Это первый регион маршрута.'],
+  'rail.route_end': ['This is the final region.', 'Это последний регион маршрута.'],
+  'rail.navigate_hint': [
+    'Use Previous and Next, or focus the map and press the arrow keys. On touch screens, swipe the map.',
+    'Нажимайте «Назад» и «Вперёд» или используйте стрелки на клавиатуре. На сенсорном экране карту можно прокручивать.',
+  ],
   'rail.events': ['Atmospheric events', 'Атмосферные события'],
   'rail.events_hint': [
     'Subtle, realistic encounters along the route.',

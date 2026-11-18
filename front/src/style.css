@@ -3561,6 +3561,7 @@ button.notebook-object {
 .atlas-page {
   min-height: 100vh;
   padding: clamp(20px, 4vw, 55px);
+  padding-bottom: 130px;
   background: #101b2b;
   color: #e9d9ba;
 }
@@ -3594,7 +3595,10 @@ button.notebook-object {
   font-size: 17px;
 }
 .atlas-frame {
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-inline: contain;
+  touch-action: pan-x;
   border: 8px solid #6e5145;
   box-shadow:
     0 0 0 3px #c39869,
@@ -3604,15 +3608,82 @@ button.notebook-object {
 .atlas-frame:focus-visible {
   outline: 3px solid #f5d49c;
 }
-.atlas-frame svg {
+.atlas-map {
+  position: relative;
+  min-width: 680px;
+  aspect-ratio: 1000 / 420;
+  isolation: isolate;
+  background: #273b3a;
+}
+.atlas-map canvas {
   display: block;
   width: 100%;
-  height: auto;
-  min-height: 260px;
+  height: 100%;
   image-rendering: pixelated;
 }
-.atlas-locomotive {
-  transition: transform 0.8s linear;
+.atlas-map-title,
+.atlas-map-scale {
+  position: absolute;
+  left: 18px;
+  z-index: 2;
+  padding: 7px 9px;
+  color: #f3d39e;
+  background: #132536e8;
+  border: 2px solid #ad815d;
+  font:
+    9px 'Press Start 2P',
+    monospace;
+  line-height: 1.6;
+  pointer-events: none;
+}
+.atlas-map-title {
+  top: 15px;
+}
+.atlas-map-scale {
+  bottom: 13px;
+}
+.atlas-marker {
+  position: absolute;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  transform: translate(-50%, -50%);
+  border: 3px solid #192938;
+  background: #e7bd82;
+  color: #1a2b38;
+  box-shadow: 3px 4px 0 #0c1925aa;
+  cursor: pointer;
+  font-size: 14px;
+}
+.atlas-marker:hover,
+.atlas-marker:focus-visible {
+  z-index: 5;
+  outline: 3px solid #fff0c2;
+}
+.atlas-marker.train {
+  z-index: 4;
+  border-radius: 50%;
+  transition:
+    left 0.8s linear,
+    top 0.8s linear;
+}
+.atlas-marker.rest {
+  background: #d7ded4;
+}
+.atlas-point-info {
+  margin-top: 16px;
+  padding: 13px 16px;
+  border: 2px solid #b48b62;
+  background: #243246;
+  color: #f0d1a3;
+}
+.atlas-navigation-hint {
+  margin-top: 12px;
+  color: #b8c4c9;
+  font-size: 12px;
+  line-height: 1.5;
 }
 .atlas-navigation {
   display: flex;
