@@ -63,35 +63,37 @@ function Shell() {
             <X size={20} />
           </button>
         </div>
-        <div className="sidebar-caption">{t('ui.the_journey')}</div>
-        <nav aria-label={t('ui.main_navigation')}>
-          {links().map(({ to, icon: Icon, text }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={to === '/dashboard'}
-              onClick={() => setMenuOpen(false)}
-              className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
-            >
-              <Icon size={18} strokeWidth={1.8} />
-              {text}
-            </NavLink>
-          ))}
-        </nav>
-        <div className="sidebar-bottom">
-          <TrainSoundStatus />
-          <div className="rail-note">
-            <TrainFront size={22} />
-            <span>
-              {t('ui.one_quiet_mile')} <br />
-              {t('ui.at_a_time')}{' '}
-            </span>
-          </div>
-          <div className="user-chip">
-            <div className="avatar">{user?.username?.[0]?.toUpperCase()}</div>
-            <div>
-              <strong>{user?.first_name || user?.username}</strong>
-              <small>{t('ui.traveler')}</small>
+        <div className="sidebar-scroll" tabIndex={0}>
+          <div className="sidebar-caption">{t('ui.the_journey')}</div>
+          <nav aria-label={t('ui.main_navigation')}>
+            {links().map(({ to, icon: Icon, text }) => (
+              <NavLink
+                key={to}
+                to={to}
+                end={to === '/dashboard'}
+                onClick={() => setMenuOpen(false)}
+                className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+              >
+                <Icon size={18} strokeWidth={1.8} />
+                {text}
+              </NavLink>
+            ))}
+          </nav>
+          <div className="sidebar-bottom">
+            <TrainSoundStatus />
+            <div className="rail-note">
+              <TrainFront size={22} />
+              <span>
+                {t('ui.one_quiet_mile')} <br />
+                {t('ui.at_a_time')}{' '}
+              </span>
+            </div>
+            <div className="user-chip">
+              <div className="avatar">{user?.username?.[0]?.toUpperCase()}</div>
+              <div>
+                <strong>{user?.first_name || user?.username}</strong>
+                <small>{t('ui.traveler')}</small>
+              </div>
             </div>
           </div>
         </div>

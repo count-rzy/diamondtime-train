@@ -323,53 +323,57 @@ export default function Compartment({
           </p>
         )}
       </div>
-      {preview ? (
-        <Link className="notebook-object" to="/register">
-          <span className="object-top">
-            <BookOpen size={15} />
-            {t('ui.travel_journal')}{' '}
-          </span>
-          <strong>
-            {t('ui.notes_from')} <br />
-            {t('ui.the_road')}{' '}
-          </strong>
-          <span className="notebook-lines" />
-          <small>{preview ? t('ui.write_your_story') : t('ui.open_diary')}</small>
-        </Link>
-      ) : (
-        <button
-          type="button"
-          className="notebook-object"
-          onClick={onOpenNotebook}
-          aria-label={t('notebook.open')}
-        >
-          <span className="object-top">
-            <BookOpen size={15} />
-            {t('ui.travel_journal')}
-          </span>
-          <strong>
-            {t('ui.notes_from')}
-            <br />
-            {t('ui.the_road')}
-          </strong>
-          <span className="notebook-lines" />
-          <small>{t('ui.open_diary')}</small>
-        </button>
-      )}
-      <Link className="ticket-object" to={preview ? '/register' : '/statistics'}>
-        <span>
-          <Ticket size={16} />
-          {t('ui.passenger_ticket')}{' '}
-        </span>
-        <strong>{t('ui.your_miles')}</strong>
-        <small>{preview ? t('ui.collect_the_moments') : t('ui.view_statistics')}</small>
-      </Link>
-      {!preview && (
-        <Link className="atlas-object" to="/atlas" aria-label={t('rail.open_atlas')}>
-          <MapPinned size={16} />
-          {t('rail.atlas')}
-        </Link>
-      )}
+      <div className="cabin-objects">
+        {preview ? (
+          <Link className="notebook-object" to="/register">
+            <span className="object-top">
+              <BookOpen size={15} />
+              {t('ui.travel_journal')}{' '}
+            </span>
+            <strong>
+              {t('ui.notes_from')} <br />
+              {t('ui.the_road')}{' '}
+            </strong>
+            <span className="notebook-lines" />
+            <small>{preview ? t('ui.write_your_story') : t('ui.open_diary')}</small>
+          </Link>
+        ) : (
+          <button
+            type="button"
+            className="notebook-object"
+            onClick={onOpenNotebook}
+            aria-label={t('notebook.open')}
+          >
+            <span className="object-top">
+              <BookOpen size={15} />
+              {t('ui.travel_journal')}
+            </span>
+            <strong>
+              {t('ui.notes_from')}
+              <br />
+              {t('ui.the_road')}
+            </strong>
+            <span className="notebook-lines" />
+            <small>{t('ui.open_diary')}</small>
+          </button>
+        )}
+        <div className="cabin-objects-right">
+          <Link className="ticket-object" to={preview ? '/register' : '/statistics'}>
+            <span>
+              <Ticket size={16} />
+              {t('ui.passenger_ticket')}{' '}
+            </span>
+            <strong>{t('ui.your_miles')}</strong>
+            <small>{preview ? t('ui.collect_the_moments') : t('ui.view_statistics')}</small>
+          </Link>
+          {!preview && (
+            <Link className="atlas-object" to="/atlas" aria-label={t('rail.open_atlas')}>
+              <MapPinned size={16} />
+              {t('rail.atlas')}
+            </Link>
+          )}
+        </div>
+      </div>
       {!preview && (
         <Link className="cabin-new" to="/journeys/new">
           <Plus size={14} />
