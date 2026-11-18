@@ -15,6 +15,7 @@ import {
   History,
   Home,
   Menu,
+  MapPinned,
   Plus,
   Settings,
   TrainFront,
@@ -24,6 +25,7 @@ import { useState, useEffect } from 'react'
 import { AuthPage, AuthProvider, Protected, useAuth } from './Auth'
 import { CreateJourney, HistoryPage } from './JourneyPages'
 import Dashboard from './Dashboard'
+import Atlas from './Atlas'
 import { DiaryPage, StatisticsPage, SettingsPage } from './OtherPages'
 import MusicPlayer from './MusicPlayer'
 import Scene from './Scene'
@@ -33,6 +35,7 @@ const links = () => [
   { to: '/dashboard', icon: Home, text: t('ui.overview') },
   { to: '/journeys/new', icon: Plus, text: t('ui.new_journey') },
   { to: '/diary', icon: BookOpen, text: t('ui.travel_diary') },
+  { to: '/atlas', icon: MapPinned, text: t('rail.atlas') },
   { to: '/statistics', icon: BarChart3, text: t('ui.statistics') },
   { to: '/history', icon: History, text: t('ui.journey_history') },
   { to: '/settings', icon: Settings, text: t('ui.settings') },
@@ -147,6 +150,7 @@ function AppRoutes() {
     ['/dashboard', Dashboard],
     ['/journeys/new', CreateJourney],
     ['/diary', DiaryPage],
+    ['/atlas', Atlas],
     ['/statistics', StatisticsPage],
     ['/history', HistoryPage],
     ['/settings', SettingsPage],

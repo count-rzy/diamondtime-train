@@ -2,9 +2,10 @@ import { useSyncExternalStore } from 'react'
 import baseEn from './locales/en.json'
 import baseRu from './locales/ru.json'
 import { extra } from './locales/extra'
+import { rail } from './locales/rail'
 
 export const dictionaries = { en: { ...baseEn }, ru: { ...baseRu } }
-for (const [key, values] of Object.entries(extra)) {
+for (const [key, values] of Object.entries({ ...extra, ...rail })) {
   dictionaries.en[key] = values[0]
   dictionaries.ru[key] = values[1]
 }

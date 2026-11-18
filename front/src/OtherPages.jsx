@@ -710,6 +710,17 @@ export function SettingsPage() {
               </label>
               <label className="toggle-row">
                 <span>
+                  <strong>{t('rail.events')}</strong>
+                  <small>{t('rail.events_hint')}</small>
+                </span>
+                <input
+                  type="checkbox"
+                  checked={settings.atmospheric_events !== false}
+                  onChange={(event) => changeSetting('atmospheric_events', event.target.checked)}
+                />
+              </label>
+              <label className="toggle-row">
+                <span>
                   <strong>{t('ui.animation_intensity')}</strong>
                   <small>{t('ui.choose_the_pace_of_moving_scenery')}</small>
                 </span>

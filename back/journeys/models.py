@@ -1,15 +1,22 @@
 from datetime import timedelta
+import uuid
 
 from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+from django.db import transaction
 from django.utils import timezone
+
+
+def new_route_seed():
+    return uuid.uuid4().hex
 
 
 class Journey(models.Model):
     class Status(models.TextChoices):
         ACTIVE = "active", "Active"
         PAUSED = "paused", "Paused"
+        BREAK = "break", "Station break"
         COMPLETED = "completed", "Completed"
 
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="journeys")
@@ -23,6 +30,10 @@ class Journey(models.Model):
     completed_at = models.DateTimeField(null=True, blank=True)
     paused_at = models.DateTimeField(null=True, blank=True)
     paused_seconds = models.PositiveIntegerField(default=0)
+    break_seconds = models.PositiveIntegerField(default=0)
+    break_started_at = models.DateTimeField(null=True, blank=True)
+    break_ends_at = models.DateTimeField(null=True, blank=True)
+    route_seed = models.CharField(max_length=32, default=new_route_seed)
     status = models.CharField(max_length=12, choices=Status.choices, default=Status.ACTIVE)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -30,7 +41,7 @@ class Journey(models.Model):
         ordering = ["-created_at"]
         constraints = [
             models.CheckConstraint(condition=models.Q(duration_minutes__gte=1) & models.Q(duration_minutes__lte=43200), name="journey_valid_duration"),
-            models.UniqueConstraint(fields=["user"], condition=models.Q(status__in=["active", "paused"]), name="one_live_journey_per_user"),
+            models.UniqueConstraint(fields=["user"], condition=models.Q(status__in=["active", "paused", "break"]), name="one_live_journey_per_user"),
         ]
 
     def save(self, *args, **kwargs):
@@ -40,8 +51,8 @@ class Journey(models.Model):
 
     def elapsed_seconds(self, now=None):
         now = now or timezone.now()
-        end = self.completed_at or self.paused_at or now
-        return max(0, (end - self.started_at).total_seconds() - self.paused_seconds)
+        end = self.completed_at or self.paused_at or self.break_started_at or now
+        return max(0, (end - self.started_at).total_seconds() - self.paused_seconds - self.break_seconds)
 
     def progress(self, now=None):
         if self.status == self.Status.COMPLETED:
@@ -50,10 +61,58 @@ class Journey(models.Model):
 
     def reconcile(self, now=None):
         now = now or timezone.now()
-        if self.status == self.Status.ACTIVE and now >= self.expected_arrival_at:
-            self.status = self.Status.COMPLETED
-            self.completed_at = self.expected_arrival_at
-            self.save(update_fields=["status", "completed_at"])
+        if self.status not in (self.Status.ACTIVE, self.Status.BREAK):
+            return
+        with transaction.atomic():
+            while True:
+                if self.status == self.Status.BREAK:
+                    if now < self.break_ends_at:
+                        break
+                    current = self.breaks.select_for_update().get(status=JourneyBreak.Status.ACTIVE)
+                    current.status = JourneyBreak.Status.COMPLETED
+                    current.ended_at = self.break_ends_at
+                    current.save(update_fields=["status", "ended_at"])
+                    self.break_seconds += current.duration_seconds
+                    self.break_started_at = None
+                    self.break_ends_at = None
+                    self.status = self.Status.ACTIVE
+                    self.save(update_fields=["break_seconds", "break_started_at", "break_ends_at", "status"])
+                    continue
+                pending = self.breaks.filter(status=JourneyBreak.Status.PENDING).order_by("at_seconds", "id").first()
+                if pending:
+                    threshold = self.started_at + timedelta(seconds=self.paused_seconds + self.break_seconds + pending.at_seconds)
+                    if now >= threshold:
+                        pending.status = JourneyBreak.Status.ACTIVE
+                        pending.started_at = threshold
+                        pending.save(update_fields=["status", "started_at"])
+                        self.status = self.Status.BREAK
+                        self.break_started_at = threshold
+                        self.break_ends_at = threshold + timedelta(seconds=pending.duration_seconds)
+                        self.save(update_fields=["status", "break_started_at", "break_ends_at"])
+                        continue
+                if now >= self.expected_arrival_at:
+                    self.status = self.Status.COMPLETED
+                    self.completed_at = self.expected_arrival_at
+                    self.save(update_fields=["status", "completed_at"])
+                break
+
+
+class JourneyBreak(models.Model):
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        ACTIVE = "active", "Active"
+        COMPLETED = "completed", "Completed"
+
+    journey = models.ForeignKey(Journey, on_delete=models.CASCADE, related_name="breaks")
+    at_seconds = models.PositiveIntegerField()
+    duration_seconds = models.PositiveIntegerField()
+    status = models.CharField(max_length=12, choices=Status.choices, default=Status.PENDING)
+    started_at = models.DateTimeField(null=True, blank=True)
+    ended_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["at_seconds", "id"]
+        constraints = [models.UniqueConstraint(fields=["journey", "at_seconds"], name="unique_journey_break_position")]
 
 
 class DiaryEntry(models.Model):
@@ -84,6 +143,7 @@ class UserSettings(models.Model):
     ambience_muted = models.BooleanField(default=False)
     train_horn = models.BooleanField(default=True)
     weather_sounds = models.BooleanField(default=True)
+    atmospheric_events = models.BooleanField(default=True)
 
 
 class LocalContext(models.Model):

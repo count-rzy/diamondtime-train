@@ -3284,3 +3284,224 @@ button.notebook-object {
     animation: none;
   }
 }
+
+.break-planner {
+  border: 2px solid #7c6b60;
+  padding: 14px;
+  background: #172334;
+}
+.break-planner-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.break-row {
+  align-items: end;
+  margin-top: 12px;
+}
+.break-row .button {
+  min-width: 44px;
+  min-height: 44px;
+}
+.atlas-object {
+  position: absolute;
+  z-index: 6;
+  right: 7%;
+  bottom: 6%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  background: #d8bc8f url('/art/paper-texture.png') repeat;
+  color: #263341;
+  border: 3px solid #725947;
+  box-shadow: 5px 6px 0 #101725a8;
+  font:
+    8px 'Press Start 2P',
+    monospace;
+  transform: rotate(3deg);
+}
+.atlas-object:hover {
+  transform: translateY(-4px) rotate(0);
+}
+.journey-immersive .atlas-object {
+  opacity: 0.72;
+}
+.journey-immersive .atlas-object:hover,
+.journey-immersive .atlas-object:focus-visible {
+  opacity: 1;
+}
+.arrival-skip {
+  position: absolute;
+  top: 20%;
+  right: 7%;
+  z-index: 8;
+  background: #172638d9;
+  color: #f1d6aa;
+  border: 2px solid #bb9169;
+  padding: 10px;
+  cursor: pointer;
+}
+.window-arrival {
+  max-width: min(660px, 85%);
+}
+.window-arrival small {
+  display: block;
+  margin-top: 7px;
+  color: #e2c9aa;
+  line-height: 1.4;
+}
+.rail-world-event {
+  animation: rail-event-pass 8s linear both;
+}
+@keyframes rail-event-pass {
+  from {
+    transform: translateX(280px);
+    opacity: 0;
+  }
+  20%,
+  80% {
+    opacity: 0.8;
+  }
+  to {
+    transform: translateX(-280px);
+    opacity: 0;
+  }
+}
+.in-motion .pixel-scroll-near {
+  animation-duration: 6s;
+}
+.in-motion .pixel-scroll-mid {
+  animation-duration: 14s;
+}
+.in-motion .pixel-scroll-ground {
+  animation-duration: 3.5s;
+}
+.reduced .rail-world-event {
+  animation: none;
+}
+
+.atlas-page {
+  min-height: 100vh;
+  padding: clamp(20px, 4vw, 55px);
+  background: #101b2b;
+  color: #e9d9ba;
+}
+.atlas-heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 25px;
+  margin-bottom: 24px;
+}
+.atlas-heading h1 {
+  color: #f0ce99;
+}
+.atlas-heading p {
+  color: #b8c4c9;
+}
+.atlas-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 25px;
+  align-items: center;
+  margin-bottom: 15px;
+  padding: 15px;
+  background: #243246;
+  border: 3px solid #8e705b;
+}
+.atlas-status span {
+  font-size: 13px;
+}
+.atlas-status strong {
+  font-size: 17px;
+}
+.atlas-frame {
+  overflow: hidden;
+  border: 8px solid #6e5145;
+  box-shadow:
+    0 0 0 3px #c39869,
+    12px 15px 0 #080e1b;
+  background: #0c1a29;
+}
+.atlas-frame:focus-visible {
+  outline: 3px solid #f5d49c;
+}
+.atlas-frame svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-height: 260px;
+  image-rendering: pixelated;
+}
+.atlas-locomotive {
+  transition: transform 0.8s linear;
+}
+.atlas-navigation {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 30px;
+}
+.atlas-navigation > div {
+  display: grid;
+  gap: 5px;
+  text-align: center;
+}
+.atlas-navigation strong {
+  font:
+    12px 'Press Start 2P',
+    monospace;
+  line-height: 1.5;
+  color: #e8c493;
+}
+.atlas-navigation small {
+  color: #adb9c1;
+}
+.atlas-follow {
+  display: block;
+  margin: 15px auto;
+}
+.atlas-empty {
+  display: grid;
+  justify-items: center;
+  gap: 20px;
+  padding: 60px;
+  border: 3px solid #8e705b;
+}
+@media (max-width: 700px) {
+  .atlas-heading {
+    display: block;
+  }
+  .atlas-heading .button {
+    margin-top: 16px;
+  }
+  .atlas-navigation {
+    flex-wrap: wrap;
+  }
+  .atlas-navigation > div {
+    order: -1;
+    width: 100%;
+  }
+  .atlas-navigation .button {
+    flex: 1;
+  }
+  .atlas-object {
+    right: 4%;
+    bottom: 8%;
+    max-width: 130px;
+    line-height: 1.4;
+  }
+  .break-row {
+    flex-wrap: wrap;
+  }
+  .window-arrival {
+    min-width: 0;
+    padding: 10px;
+  }
+  .window-arrival strong {
+    font-size: 18px;
+  }
+}

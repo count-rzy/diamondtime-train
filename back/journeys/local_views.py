@@ -143,7 +143,7 @@ def frontend(request, path=""):
         if not candidate.is_file():
             raise Http404
         return FileResponse(candidate.open("rb"))
-    if path not in ("", "dashboard", "journeys/new", "diary", "statistics", "history", "settings", "login", "register"):
+    if path not in ("", "dashboard", "journeys/new", "diary", "atlas", "statistics", "history", "settings", "login", "register"):
         raise Http404
     if not (root / "index.html").is_file():
         return HttpResponse("Run setup.bat to build Last Train.", status=503)

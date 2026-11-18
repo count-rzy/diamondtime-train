@@ -1,4 +1,4 @@
-import { t, useLanguage, formatDate, translateMessage } from './i18n'
+import { t, useLanguage, formatDate, formatNumber, translateMessage } from './i18n'
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ArrowRight, Plus, TrainFront } from 'lucide-react'
@@ -11,6 +11,8 @@ export function CreateJourney() {
   const navigate = useNavigate()
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [durationMinutes, setDurationMinutes] = useState(60)
+  const [plannedBreaks, setPlannedBreaks] = useState([])
   async function submit(event) {
     event.preventDefault()
     setBusy(true)
@@ -29,6 +31,13 @@ export function CreateJourney() {
         starting_station: data.starting_station.trim(),
         destination_station: data.destination_station.trim(),
         duration_minutes,
+        planned_breaks:
+          duration_minutes >= 60
+            ? plannedBreaks.map((item) => ({
+                at_minutes: Number(item.at_minutes),
+                duration_minutes: Number(item.duration_minutes),
+              }))
+            : [],
       })
       navigate('/dashboard')
     } catch (err) {
@@ -97,13 +106,114 @@ export function CreateJourney() {
             <div className="field-row duration-row">
               <label>
                 <span>{t('ui.hours')}</span>
-                <input type="number" name="hours" min="0" max="720" defaultValue="1" required />
+                <input
+                  type="number"
+                  name="hours"
+                  min="0"
+                  max="720"
+                  defaultValue="1"
+                  required
+                  onChange={(event) =>
+                    setDurationMinutes(
+                      Number(event.target.value) * 60 +
+                        Number(event.target.form.elements.minutes.value),
+                    )
+                  }
+                />
               </label>
               <label>
                 <span>{t('ui.minutes')}</span>
-                <input type="number" name="minutes" min="0" max="59" defaultValue="0" required />
+                <input
+                  type="number"
+                  name="minutes"
+                  min="0"
+                  max="59"
+                  defaultValue="0"
+                  required
+                  onChange={(event) =>
+                    setDurationMinutes(
+                      Number(event.target.form.elements.hours.value) * 60 +
+                        Number(event.target.value),
+                    )
+                  }
+                />
               </label>
             </div>
+            {durationMinutes >= 60 && (
+              <div className="break-planner">
+                <div className="break-planner-heading">
+                  <strong>{t('rail.breaks')}</strong>
+                  <button
+                    type="button"
+                    className="button subtle"
+                    disabled={plannedBreaks.length >= 8}
+                    onClick={() =>
+                      setPlannedBreaks((old) => [
+                        ...old,
+                        {
+                          at_minutes: Math.max(
+                            1,
+                            Math.floor((durationMinutes * (old.length + 1)) / (old.length + 2)),
+                          ),
+                          duration_minutes: 10,
+                        },
+                      ])
+                    }
+                  >
+                    <Plus size={15} />
+                    {t('rail.add_break')}
+                  </button>
+                </div>
+                {plannedBreaks.map((item, index) => (
+                  <div className="field-row break-row" key={index}>
+                    <label>
+                      <span>{t('rail.break_at')}</span>
+                      <input
+                        type="number"
+                        min="1"
+                        max={durationMinutes - 1}
+                        value={item.at_minutes}
+                        onChange={(event) =>
+                          setPlannedBreaks((old) =>
+                            old.map((part, i) =>
+                              i === index ? { ...part, at_minutes: event.target.value } : part,
+                            ),
+                          )
+                        }
+                        required
+                      />
+                    </label>
+                    <label>
+                      <span>{t('rail.break_length')}</span>
+                      <input
+                        type="number"
+                        min="1"
+                        max="120"
+                        value={item.duration_minutes}
+                        onChange={(event) =>
+                          setPlannedBreaks((old) =>
+                            old.map((part, i) =>
+                              i === index
+                                ? { ...part, duration_minutes: event.target.value }
+                                : part,
+                            ),
+                          )
+                        }
+                        required
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      className="button subtle"
+                      onClick={() => setPlannedBreaks((old) => old.filter((_, i) => i !== index))}
+                      aria-label={t('rail.remove_break')}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
             {error && (
               <p className="error-box" role="alert">
                 {translateMessage(error)}
@@ -205,6 +315,12 @@ export function HistoryPage() {
                   {t('ui.h')} {j.duration_minutes % 60}
                   {t('ui.m')}{' '}
                 </small>
+                <small>
+                  {t('rail.distance')}: {formatNumber(((j.distance_meters || 0) / 1000).toFixed(1))}{' '}
+                  {t('rail.km')} · {t('rail.rest')}: {Math.floor((j.break_seconds || 0) / 60)}{' '}
+                  {t('ui.m')}
+                </small>
+                <Link to={`/atlas?journey=${j.id}`}>{t('rail.open_atlas')}</Link>
               </div>
             </article>
           ))}

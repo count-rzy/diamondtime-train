@@ -1,5 +1,6 @@
-import { t, useLanguage } from './i18n'
+import { formatDate, formatNumber, t, useLanguage } from './i18n'
 import { Link } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
 import {
   ArrowRight,
   BookOpen,
@@ -19,6 +20,8 @@ export default function Compartment({
   journey,
   progress = 0,
   remaining = 0,
+  breakRemaining = 0,
+  world = null,
   settings = {},
   loading = false,
   busy = false,
@@ -31,6 +34,24 @@ export default function Compartment({
   onExitImmersive,
 }) {
   useLanguage()
+  const [arrivalPhase, setArrivalPhase] = useState('depot')
+  const previousStatus = useRef(journey?.status)
+  useEffect(() => {
+    const previous = previousStatus.current
+    previousStatus.current = journey?.status
+    if (journey?.status !== 'completed' || previous === 'completed') return
+    if (!previous || settings.reduced_motion) {
+      setArrivalPhase('depot')
+      return
+    }
+    setArrivalPhase('approach')
+    const tunnel = setTimeout(() => setArrivalPhase('tunnel'), 1700)
+    const depot = setTimeout(() => setArrivalPhase('depot'), 3400)
+    return () => {
+      clearTimeout(tunnel)
+      clearTimeout(depot)
+    }
+  }, [journey?.status, settings.reduced_motion])
 
   const fixed = { dawn: 0, morning: 20, afternoon: 40, sunset: 60, twilight: 80, night: 99 }[
     settings.atmosphere
@@ -42,6 +63,20 @@ export default function Compartment({
   const arrived = journey?.status === 'completed' || progress >= 100
   const moving = (preview || journey?.status === 'active') && !arrived && !settings.reduced_motion
   const slowing = progress >= 92 && moving
+  const scene =
+    journey?.status === 'break'
+      ? 'depot'
+      : arrived
+        ? arrivalPhase === 'approach'
+          ? 'industry'
+          : arrivalPhase === 'tunnel'
+            ? 'tunnel'
+            : 'depot'
+        : progress >= 96
+          ? 'tunnel'
+          : progress >= 90
+            ? 'industry'
+            : world?.region?.scene || 'valley'
   const elapsed =
     journey?.status === 'completed'
       ? (journey.elapsed_seconds ?? journey.duration_minutes * 60)
@@ -56,6 +91,8 @@ export default function Compartment({
         progress={progress}
         particles={settings.ambient_particles !== false}
         weather={settings.weather_effects !== false}
+        scene={scene}
+        event={world?.event}
       />
       <div className="cabin-vignette" />
       <div className="cabin-heading">
@@ -70,9 +107,11 @@ export default function Compartment({
         <small>
           {arrived
             ? t('ui.destination_reached')
-            : journey?.status === 'paused'
-              ? t('ui.resting_at_a_siding')
-              : `${palette.name.toUpperCase()} · ${moving ? t('ui.in_motion') : t('ui.waiting_to_depart')}`}
+            : journey?.status === 'break'
+              ? t('rail.station_break')
+              : journey?.status === 'paused'
+                ? t('ui.resting_at_a_siding')
+                : `${palette.name.toUpperCase()} · ${moving ? t('ui.in_motion') : t('ui.waiting_to_depart')}`}
         </small>
       </div>
       <div className="stage-indicator">
@@ -109,10 +148,30 @@ export default function Compartment({
           {t('ui.comforts')}{' '}
         </Link>
       )}
-      {arrived && (
+      {arrived && arrivalPhase !== 'depot' && (
+        <button type="button" className="arrival-skip" onClick={() => setArrivalPhase('depot')}>
+          {t('rail.skip_arrival')}
+        </button>
+      )}
+      {arrived && arrivalPhase === 'depot' && (
         <div className="window-arrival" role="status">
           <span>{t('ui.last_stop')}</span>
           <strong>{t('ui.you_ve_arrived')}</strong>
+          <small>
+            {journey?.title} · {journey?.starting_station} → {journey?.destination_station}
+          </small>
+          <small>
+            {t('rail.productive')}: {formatTime(elapsed)} · {t('rail.rest')}:{' '}
+            {formatTime(journey?.break_seconds || 0)}
+          </small>
+          <small>
+            {t('rail.distance')}: {formatNumber(((world?.distanceMeters || 0) / 1000).toFixed(1))}{' '}
+            {t('rail.km')} · {t('rail.regions')}: {world?.route?.length || 0}
+          </small>
+          <small>
+            {t('rail.notes')}: {journey?.diary_count ?? 0} ·{' '}
+            {journey?.completed_at ? formatDate(journey.completed_at, true) : ''}
+          </small>
         </div>
       )}
       <div className="cabin-board">
@@ -157,8 +216,19 @@ export default function Compartment({
               <div>
                 <small>{arrived ? t('ui.travel_time') : t('ui.time_to_arrival')}</small>
                 <strong className="cabin-timer">
-                  {arrived ? formatTime(elapsed) : formatTime(remaining)}
+                  {journey.status === 'break'
+                    ? formatTime(breakRemaining)
+                    : arrived
+                      ? formatTime(elapsed)
+                      : formatTime(remaining)}
                 </strong>
+                {journey.status === 'break' && <small>{t('rail.break_countdown')}</small>}
+                {world && (
+                  <small className="board-elapsed">
+                    {t('rail.distance')}: {formatNumber((world.distanceMeters / 1000).toFixed(1))}{' '}
+                    {t('rail.km')}
+                  </small>
+                )}
                 {!arrived && (
                   <small className="board-elapsed">
                     {t('ui.elapsed')} {formatTime(elapsed)}
@@ -176,6 +246,16 @@ export default function Compartment({
                     {t('ui.pause')}{' '}
                   </button>
                 )}
+                {journey.status === 'active' &&
+                  journey.breaks?.some((item) => item.status === 'pending') && (
+                    <button
+                      className="board-button"
+                      disabled={busy}
+                      onClick={() => onAction('station-break')}
+                    >
+                      {t('rail.stop_at_station')}
+                    </button>
+                  )}
                 {journey.status === 'paused' && (
                   <button
                     className="board-button"
@@ -272,6 +352,12 @@ export default function Compartment({
         <strong>{t('ui.your_miles')}</strong>
         <small>{preview ? t('ui.collect_the_moments') : t('ui.view_statistics')}</small>
       </Link>
+      {!preview && (
+        <Link className="atlas-object" to="/atlas" aria-label={t('rail.open_atlas')}>
+          <MapPinned size={16} />
+          {t('rail.atlas')}
+        </Link>
+      )}
       {!preview && (
         <Link className="cabin-new" to="/journeys/new">
           <Plus size={14} />

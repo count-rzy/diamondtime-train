@@ -74,6 +74,7 @@ export class TrainAudioEngine {
         this.noise = this.noiseBuffer(context)
         this.rumble = this.layer('lowpass', 110, 0)
         this.wind = this.layer('bandpass', 650, 0)
+        this.platform = this.layer('bandpass', 230, 0)
         this.rain = this.layer('highpass', 1800, 0)
         this.vibration = this.own(context.createGain())
         this.vibration.gain.value = 0
@@ -113,6 +114,7 @@ export class TrainAudioEngine {
     const enabled = this.settings.ambience_enabled !== false && !this.settings.ambience_muted
     const active = journey?.status === 'active'
     const paused = journey?.status === 'paused'
+    const station = journey?.status === 'break' || journey?.status === 'completed'
     const progress = journey?.progress || 0
     const approach = active ? Math.max(0.15, Math.min(1, (100 - progress) / 8)) : 0
     this.speed = active ? approach : 0
@@ -121,12 +123,17 @@ export class TrainAudioEngine {
       enabled ? (Math.min(100, Math.max(0, this.settings.ambience_volume ?? 30)) / 100) * 0.22 : 0,
       0.25,
     )
-    this.target(this.rumble.gain, active ? 0.65 * approach : paused ? 0.055 : 0.018)
+    this.target(
+      this.rumble.gain,
+      active ? 0.65 * approach : paused ? 0.055 : station ? 0.035 : 0.018,
+    )
     this.target(this.vibration.gain, active ? 0.055 * approach : 0)
-    this.target(this.wind.gain, active ? 0.065 * approach : journey ? 0.018 : 0)
+    this.target(this.wind.gain, active ? 0.065 * approach : journey ? 0.012 : 0)
+    this.target(this.platform.gain, station ? 0.045 : 0)
     const rain =
       this.settings.weather_sounds !== false &&
       this.settings.weather_effects !== false &&
+      active &&
       progress > 28 &&
       progress < 53
     this.target(this.rain.gain, rain && journey ? 0.055 : 0)
