@@ -29,7 +29,7 @@ beforeEach(() => {
   api.patch.mockImplementation(async (_, values) => ({ ...preferences, ...values }))
 })
 describe('browser audio authorization and cleanup', () => {
-  it('waits for user interaction, prevents retry storms and permits explicit retry', async () => {
+  it('starts only from the sound control and permits retry after a rejected resume', async () => {
     const view = render(
       <TrainAudioProvider>
         <TrainSoundStatus />
@@ -38,11 +38,12 @@ describe('browser audio authorization and cleanup', () => {
     await screen.findByRole('button', { name: 'Enable train sounds' })
     const engine = TrainAudioEngine.mock.results.at(-1).value
     expect(engine.start).not.toHaveBeenCalled()
-    engine.start.mockRejectedValueOnce(new Error('NotAllowedError'))
-    fireEvent.pointerDown(window)
-    await screen.findByText(/Audio is unavailable/)
     fireEvent.pointerDown(window)
     fireEvent.keyDown(window, { key: 'a' })
+    expect(engine.start).not.toHaveBeenCalled()
+    engine.start.mockRejectedValueOnce(new Error('NotAllowedError'))
+    fireEvent.click(screen.getByRole('button', { name: 'Enable train sounds' }))
+    await screen.findByText(/Audio is unavailable/)
     expect(engine.start).toHaveBeenCalledTimes(1)
     fireEvent.click(screen.getByRole('button', { name: 'Enable train sounds' }))
     await screen.findByText('Train sounds on')
@@ -59,7 +60,7 @@ describe('browser audio authorization and cleanup', () => {
       </TrainAudioProvider>,
     )
     await screen.findByRole('button', { name: 'Enable train sounds' })
-    fireEvent.pointerDown(window)
+    fireEvent.click(screen.getByRole('button', { name: 'Enable train sounds' }))
     await screen.findByText('Train sounds on')
     fireEvent.click(screen.getByRole('button', { name: 'Mute train ambience' }))
     await screen.findByText('Train sounds muted')

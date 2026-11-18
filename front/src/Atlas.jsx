@@ -1,11 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, ChevronLeft, ChevronRight, TrainFront } from 'lucide-react'
 import { api } from './api'
 import { formatNumber, t, useLanguage } from './i18n'
 import { deriveWorld, pointOnTrack } from './world'
-
-const art = (scene) => (scene === 'valley' ? '/art/valley-night.png' : `/art/rail-${scene}.png`)
+import { atlasTrack, drawAtlasMap } from './atlas-map'
 
 export default function Atlas() {
   useLanguage()
@@ -16,7 +15,14 @@ export default function Atlas() {
   const [fetchedAt, setFetchedAt] = useState(performance.now())
   const [now, setNow] = useState(performance.now())
   const [selectedIndex, setSelectedIndex] = useState(null)
+  const [selectedPoint, setSelectedPoint] = useState(null)
   const [error, setError] = useState('')
+  const canvas = useRef(null)
+
+  useEffect(() => {
+    window.scrollTo(0, 0)
+    document.querySelector('.shell-main')?.scrollTo(0, 0)
+  }, [])
 
   useEffect(() => {
     let active = true
@@ -62,13 +68,30 @@ export default function Atlas() {
   const region = world?.route[index]
   const fraction =
     index < currentIndex ? 1 : index > currentIndex ? 0 : (world?.regionFraction ?? 0)
-  const marker = region ? pointOnTrack(region.points, fraction) : [40, 215]
-  const track = region?.points.map((point) => point.join(',')).join(' ') || ''
+  const track = useMemo(() => (region ? atlasTrack(region.points) : []), [region])
+  const marker = region ? pointOnTrack(track, fraction) : [40, 215]
   const restStops =
     journey?.breaks?.filter((item) => {
       const distance = item.at_minutes * 100
       return distance >= region.start && distance <= region.end
     }) || []
+
+  useEffect(() => {
+    if (region) drawAtlasMap(canvas.current, region, journey.route_seed || journey.id, fraction)
+  }, [region, journey, fraction])
+
+  useEffect(() => setSelectedPoint(null), [index])
+
+  const pointLabel =
+    selectedPoint === 'train'
+      ? `${t('rail.current_location')}: ${formatNumber(Math.round(world?.distanceMeters || 0))} ${t('rail.meters')}`
+      : selectedPoint === 'start'
+        ? t('rail.departure_station')
+        : selectedPoint === 'end'
+          ? `${t('rail.destination_station')}: ${journey?.destination_station || t('rail.region.' + region?.id)}`
+          : restStops.find((stop) => String(stop.id) === selectedPoint)
+            ? t('rail.station_break')
+            : ''
 
   function keyDown(event) {
     if (!world) return
@@ -77,7 +100,7 @@ export default function Atlas() {
   }
 
   return (
-    <div className="atlas-page" onKeyDown={keyDown}>
+    <div className="atlas-page">
       <header className="atlas-heading">
         <div>
           <span className="eyebrow">{t('rail.railway')}</span>
@@ -116,108 +139,84 @@ export default function Atlas() {
             </span>
             <span>{t('status.' + journey.status)}</span>
           </div>
-          <div className="atlas-frame" tabIndex={0} aria-label={t('rail.map_keyboard')}>
-            <svg
-              viewBox="0 0 1000 420"
-              role="img"
-              aria-label={`${t('rail.region.' + region.id)} · ${Math.round(fraction * 100)}%`}
-            >
-              <defs>
-                <pattern id="atlas-grid" width="25" height="25" patternUnits="userSpaceOnUse">
-                  <path d="M25 0H0V25" fill="none" stroke="#8ba2ae" strokeOpacity=".16" />
-                </pattern>
-                <clipPath id="atlas-traveled">
-                  <rect x="0" y="0" width={Math.max(0, marker[0])} height="420" />
-                </clipPath>
-              </defs>
-              <image
-                href={art(region.scene)}
-                width="1000"
-                height="420"
-                preserveAspectRatio="xMidYMid slice"
-                opacity=".82"
-              />
-              <rect width="1000" height="420" fill="#0a1930" opacity=".22" />
-              <rect width="1000" height="420" fill="url(#atlas-grid)" />
-              <polyline
-                points={track}
-                fill="none"
-                stroke="#111725"
-                strokeWidth="19"
-                strokeLinecap="square"
-                strokeLinejoin="round"
-              />
-              <polyline
-                points={track}
-                fill="none"
-                stroke="#987a65"
-                strokeWidth="11"
-                strokeLinecap="square"
-                strokeLinejoin="round"
-                strokeDasharray="5 9"
-              />
-              <polyline
-                points={track}
-                fill="none"
-                stroke="#d8ba85"
-                strokeWidth="3"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <polyline
-                points={track}
-                fill="none"
-                stroke="#f9d18d"
-                strokeWidth="6"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                clipPath="url(#atlas-traveled)"
-              />
-              {region.points.slice(1).map((point, i) => (
-                <circle key={i} cx={point[0]} cy={point[1]} r="3" fill="#f0d09b" />
-              ))}
-              {[region.points[0], region.points.at(-1)].map((point, i) => (
-                <g key={i}>
-                  <circle
-                    cx={point[0]}
-                    cy={point[1]}
-                    r="13"
-                    fill="#c49a69"
-                    stroke="#17253b"
-                    strokeWidth="5"
-                  />
-                  <circle cx={point[0]} cy={point[1]} r="4" fill="#f5d6a3" />
-                </g>
-              ))}
+          <div
+            className="atlas-frame"
+            tabIndex={0}
+            onKeyDown={keyDown}
+            aria-label={t('rail.map_keyboard')}
+          >
+            <div className="atlas-map" role="group" aria-label={t('rail.region.' + region.id)}>
+              <canvas ref={canvas} aria-hidden="true" />
+              <div className="atlas-map-title">
+                {t('rail.region.' + region.id)} · {String(index + 1).padStart(2, '0')}
+              </div>
+              <button
+                className="atlas-marker station start"
+                style={{ left: '4%', top: '34%' }}
+                onClick={() => setSelectedPoint('start')}
+                aria-label={t('rail.departure_station')}
+                title={t('rail.departure_station')}
+              >
+                ◆
+              </button>
+              <button
+                className="atlas-marker station end"
+                style={{ left: '94%', top: '34%' }}
+                onClick={() => setSelectedPoint('end')}
+                aria-label={t('rail.destination_station')}
+                title={t('rail.destination_station')}
+              >
+                ◆
+              </button>
               {restStops.map((stop) => {
                 const [x, y] = pointOnTrack(
-                  region.points,
+                  track,
                   (stop.at_minutes * 100 - region.start) / (region.end - region.start),
                 )
                 return (
-                  <g key={stop.id}>
-                    <circle cx={x} cy={y} r="15" fill="#26394b" stroke="#e3ad74" strokeWidth="3" />
-                    <path
-                      d={`M${x - 5} ${y}h10 M${x} ${y - 5}v10`}
-                      stroke="#f8d6a2"
-                      strokeWidth="2"
-                    />
-                  </g>
+                  <button
+                    key={stop.id}
+                    className="atlas-marker rest"
+                    style={{ left: `${x / 10}%`, top: `${y / 4.2}%` }}
+                    onClick={() => setSelectedPoint(String(stop.id))}
+                    aria-label={t('rail.station_break')}
+                    title={t('rail.station_break')}
+                  >
+                    ✚
+                  </button>
                 )
               })}
-              <g transform={`translate(${marker[0]} ${marker[1]})`} className="atlas-locomotive">
-                <circle r="20" fill="#e6bd83" stroke="#142034" strokeWidth="5" />
-                <path d="M-10 5h20v-10h-8v-5h-8v5h-4z" fill="#243541" />
-                <circle cx="-6" cy="7" r="3" fill="#263442" />
-                <circle cx="7" cy="7" r="3" fill="#263442" />
-              </g>
-            </svg>
+              {index === currentIndex && (
+                <button
+                  className="atlas-marker train"
+                  style={{ left: `${marker[0] / 10}%`, top: `${marker[1] / 4.2}%` }}
+                  onClick={() => setSelectedPoint('train')}
+                  aria-label={t('rail.inspect_train')}
+                  title={t('rail.inspect_train')}
+                >
+                  <TrainFront size={19} />
+                </button>
+              )}
+              <div className="atlas-map-scale">
+                0 ━━━ {formatNumber(region.end - region.start)} {t('rail.meters')}
+              </div>
+            </div>
           </div>
+          {pointLabel && (
+            <div className="atlas-point-info" role="status">
+              {pointLabel}
+            </div>
+          )}
           <div className="atlas-navigation">
             <button
               className="button secondary"
               onClick={() => setSelectedIndex(index - 1)}
               disabled={index === 0}
+              title={
+                index === 0
+                  ? t(world.route.length === 1 ? 'rail.single_region' : 'rail.route_start')
+                  : undefined
+              }
             >
               <ChevronLeft size={16} />
               {t('rail.previous_region')}
@@ -236,11 +235,19 @@ export default function Atlas() {
               className="button secondary"
               onClick={() => setSelectedIndex(index + 1)}
               disabled={index === world.route.length - 1}
+              title={
+                index === world.route.length - 1
+                  ? t(world.route.length === 1 ? 'rail.single_region' : 'rail.route_end')
+                  : undefined
+              }
             >
               {t('rail.next_region')}
               <ChevronRight size={16} />
             </button>
           </div>
+          <p className="atlas-navigation-hint">
+            {t(world.route.length === 1 ? 'rail.single_region' : 'rail.navigate_hint')}
+          </p>
           {selectedIndex !== null && selectedIndex !== currentIndex && (
             <button className="button subtle atlas-follow" onClick={() => setSelectedIndex(null)}>
               {t('rail.follow_train')}
