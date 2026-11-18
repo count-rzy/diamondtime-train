@@ -65,3 +65,24 @@ class RailwayTimeTests(TestCase):
         self.assertEqual(journey.breaks.count(), 0)
         self.assertEqual(journey.expected_arrival_at, journey.started_at + timedelta(minutes=30))
 
+    def test_pause_resume_shifts_break_threshold_without_distance_gain(self):
+        journey = self.create([{'at_minutes': 60, 'duration_minutes': 10}])
+        now = timezone.now()
+        journey.started_at = now - timedelta(minutes=50)
+        journey.expected_arrival_at = journey.started_at + timedelta(minutes=130)
+        journey.paused_at = now - timedelta(minutes=10)
+        journey.status = Journey.Status.PAUSED
+        journey.save()
+        self.assertAlmostEqual(journey.elapsed_seconds(now), 40 * 60, delta=1)
+
+        response = self.client.post(f'/api/journeys/{journey.pk}/resume/', {}, format='json')
+        self.assertEqual(response.status_code, 200)
+        journey = Journey.objects.get(pk=journey.pk)  # Reconstruct after an application restart.
+        self.assertEqual(journey.status, Journey.Status.ACTIVE)
+        self.assertAlmostEqual(journey.elapsed_seconds(now), 40 * 60, delta=2)
+        journey.reconcile(now + timedelta(minutes=19))
+        self.assertEqual(journey.status, Journey.Status.ACTIVE)
+        journey.reconcile(now + timedelta(minutes=21))
+        self.assertEqual(journey.status, Journey.Status.BREAK)
+        self.assertAlmostEqual(journey.elapsed_seconds(now + timedelta(minutes=21)), 60 * 60, delta=2)
+

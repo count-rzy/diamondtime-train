@@ -22,6 +22,7 @@ class JourneySerializer(serializers.ModelSerializer):
     distance_meters = serializers.SerializerMethodField()
     break_remaining_seconds = serializers.SerializerMethodField()
     breaks = serializers.SerializerMethodField()
+    diary_count = serializers.SerializerMethodField()
     planned_breaks = serializers.ListField(child=serializers.DictField(), write_only=True, required=False)
     status = serializers.CharField(read_only=True)
 
@@ -30,7 +31,7 @@ class JourneySerializer(serializers.ModelSerializer):
         fields = ("id", "title", "description", "starting_station", "destination_station",
                   "duration_minutes", "started_at", "expected_arrival_at", "completed_at",
                   "status", "progress", "remaining_seconds", "elapsed_seconds", "distance_meters",
-                  "break_seconds", "break_remaining_seconds", "breaks", "planned_breaks", "route_seed", "created_at")
+                  "break_seconds", "break_remaining_seconds", "breaks", "planned_breaks", "route_seed", "diary_count", "created_at")
         read_only_fields = ("id", "started_at", "expected_arrival_at", "completed_at", "break_seconds", "route_seed", "created_at")
 
     def validate(self, attrs):
@@ -93,6 +94,9 @@ class JourneySerializer(serializers.ModelSerializer):
                  "started_at": item.started_at, "ended_at": item.ended_at}
                 for item in obj.breaks.all()]
 
+    def get_diary_count(self, obj):
+        return obj.diary_entries.count()
+
 
 class DiarySerializer(serializers.ModelSerializer):
     journey_title = serializers.CharField(source="journey.title", read_only=True)
@@ -111,4 +115,4 @@ class DiarySerializer(serializers.ModelSerializer):
 class SettingsSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserSettings
-        fields = ("reduced_motion", "ambient_particles", "weather_effects", "animation_intensity", "preferred_volume", "music_muted", "atmosphere", "crisp_pixels", "language", "ambience_enabled", "ambience_volume", "ambience_muted", "train_horn", "weather_sounds")
+        fields = ("reduced_motion", "ambient_particles", "weather_effects", "animation_intensity", "preferred_volume", "music_muted", "atmosphere", "crisp_pixels", "language", "ambience_enabled", "ambience_volume", "ambience_muted", "train_horn", "weather_sounds", "atmospheric_events")

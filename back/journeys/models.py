@@ -143,6 +143,7 @@ class UserSettings(models.Model):
     ambience_muted = models.BooleanField(default=False)
     train_horn = models.BooleanField(default=True)
     weather_sounds = models.BooleanField(default=True)
+    atmospheric_events = models.BooleanField(default=True)
 
 
 class LocalContext(models.Model):

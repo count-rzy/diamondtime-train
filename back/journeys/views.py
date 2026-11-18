@@ -39,7 +39,7 @@ class JourneyViewSet(viewsets.ModelViewSet):
                 # Lock the owner row so two PostgreSQL requests cannot both
                 # observe an empty live-journey set before inserting.
                 get_user_model().objects.select_for_update().get(pk=self.request.user.pk)
-                for journey in Journey.objects.filter(user=self.request.user, status=Journey.Status.ACTIVE):
+                for journey in Journey.objects.filter(user=self.request.user, status__in=[Journey.Status.ACTIVE, Journey.Status.BREAK]):
                     journey.reconcile()
                 if Journey.objects.filter(user=self.request.user, status__in=[Journey.Status.ACTIVE, Journey.Status.PAUSED, Journey.Status.BREAK]).exists():
                     raise ValidationError({"detail": "Finish the current journey before departing again."})

@@ -2,8 +2,15 @@
 
 import django.db.models.deletion
 import journeys.models
+import uuid
 from django.conf import settings
 from django.db import migrations, models
+
+
+def assign_legacy_route_seeds(apps, schema_editor):
+    journey = apps.get_model('journeys', 'Journey')
+    for pk in journey.objects.values_list('pk', flat=True).iterator(chunk_size=500):
+        journey.objects.filter(pk=pk).update(route_seed=uuid.uuid4().hex)
 
 
 class Migration(migrations.Migration):
@@ -52,6 +59,7 @@ class Migration(migrations.Migration):
             name='route_seed',
             field=models.CharField(default=journeys.models.new_route_seed, max_length=32),
         ),
+        migrations.RunPython(assign_legacy_route_seeds, migrations.RunPython.noop),
         migrations.AlterField(
             model_name='journey',
             name='status',
