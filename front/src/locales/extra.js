@@ -21,10 +21,7 @@ export const extra = {
     'У звуков поезда и радио отдельные регуляторы громкости.',
   ],
   'audio.unlock': ['Enable train sounds', 'Включить звуки поезда'],
-  'audio.waiting': [
-    'Sound starts after your first interaction.',
-    'Звук включится после первого нажатия.',
-  ],
+  'audio.waiting': ['Press to enable train sounds.', 'Нажмите, чтобы включить звуки поезда.'],
   'audio.unavailable': [
     'Audio is unavailable. Press Enable train sounds to retry.',
     'Звук недоступен. Нажмите «Включить звуки поезда», чтобы повторить.',

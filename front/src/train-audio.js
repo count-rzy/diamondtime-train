@@ -88,12 +88,12 @@ export class TrainAudioEngine {
         }
       }
       await this.context.resume()
-      if (this.closed) return false
+      if (this.closed || this.context.state !== 'running') return false
       this.nextWheel = this.context.currentTime + 0.15
       this.nextHorn = this.context.currentTime + 70
       this.configure(this.journey, this.settings)
       if (!this.timer) this.timer = setInterval(() => this.schedule(), 200)
-      return this.context.state === 'running'
+      return true
     })().finally(() => {
       this.starting = null
     })
@@ -120,7 +120,7 @@ export class TrainAudioEngine {
     this.speed = active ? approach : 0
     this.target(
       this.master.gain,
-      enabled ? (Math.min(100, Math.max(0, this.settings.ambience_volume ?? 30)) / 100) * 0.22 : 0,
+      enabled ? (Math.min(100, Math.max(0, this.settings.ambience_volume ?? 30)) / 100) * 0.32 : 0,
       0.25,
     )
     this.target(

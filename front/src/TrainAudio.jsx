@@ -11,7 +11,6 @@ export function TrainAudioProvider({ children }) {
   const [settings, setSettings] = useState({ ambience_enabled: true, ambience_volume: 30 })
   const [state, setState] = useState('waiting')
   const ready = useRef(false)
-  const blocked = useRef(false)
   useEffect(() => {
     const audio = new TrainAudioEngine()
     engine.current = audio
@@ -37,7 +36,6 @@ export function TrainAudioProvider({ children }) {
           if (!disposed) {
             audio.suspend().catch(() => {})
             ready.current = false
-            blocked.current = true
             setState('unavailable')
             window.dispatchEvent(new Event('lasttrain:server-unavailable'))
           }
@@ -63,27 +61,6 @@ export function TrainAudioProvider({ children }) {
       setSettings(event.detail)
       audio.configure(currentJourney, currentSettings)
     }
-    const unlock = async () => {
-      if (
-        disposed ||
-        blocked.current ||
-        ready.current ||
-        currentSettings.ambience_enabled === false
-      )
-        return
-      try {
-        const started = await audio.start()
-        if (disposed) return
-        ready.current = started
-        blocked.current = !started
-        setState(started ? 'active' : 'unavailable')
-      } catch {
-        if (!disposed) {
-          blocked.current = true
-          setState('unavailable')
-        }
-      }
-    }
     const visibility = async () => {
       if (document.hidden) {
         await audio.suspend()
@@ -99,8 +76,6 @@ export function TrainAudioProvider({ children }) {
     const interval = setInterval(() => {
       if (!document.hidden) refresh()
     }, 15000)
-    window.addEventListener('pointerdown', unlock)
-    window.addEventListener('keydown', unlock)
     window.addEventListener('lasttrain:settings-updated', updated)
     window.addEventListener('lasttrain:journey-updated', refresh)
     window.addEventListener('pagehide', hide)
@@ -109,10 +84,7 @@ export function TrainAudioProvider({ children }) {
     return () => {
       disposed = true
       ready.current = false
-      blocked.current = false
       clearInterval(interval)
-      window.removeEventListener('pointerdown', unlock)
-      window.removeEventListener('keydown', unlock)
       window.removeEventListener('lasttrain:settings-updated', updated)
       window.removeEventListener('lasttrain:journey-updated', refresh)
       window.removeEventListener('pagehide', hide)
@@ -122,14 +94,14 @@ export function TrainAudioProvider({ children }) {
     }
   }, [])
   async function unlock() {
-    blocked.current = false
     try {
       const started = await engine.current.start()
       ready.current = started
       setState(started ? 'active' : 'unavailable')
+      return started
     } catch {
-      blocked.current = true
       setState('unavailable')
+      return false
     }
   }
   return <Context.Provider value={{ settings, state, unlock }}>{children}</Context.Provider>
@@ -142,7 +114,18 @@ export function TrainSoundStatus() {
   const muted = audio.settings.ambience_muted || audio.settings.ambience_enabled === false
   async function toggle() {
     if (audio.state !== 'active') {
-      await audio.unlock()
+      const started = await audio.unlock()
+      if (started && muted) {
+        try {
+          const settings = await api.patch('/settings/', {
+            ambience_enabled: true,
+            ambience_muted: false,
+          })
+          window.dispatchEvent(new CustomEvent('lasttrain:settings-updated', { detail: settings }))
+        } catch {
+          /* The sound is running; the saved preference can be retried in Settings. */
+        }
+      }
       return
     }
     try {
