@@ -15,15 +15,23 @@ const journey = {
 describe('carriage dashboard', () => {
   it('places journey controls and destinations inside the scene', () => {
     const onAction = vi.fn()
+    const onOpenNotebook = vi.fn()
     render(
       <MemoryRouter>
-        <Compartment journey={journey} progress={50} remaining={1800} onAction={onAction} />
+        <Compartment
+          journey={journey}
+          progress={50}
+          remaining={1800}
+          onAction={onAction}
+          onOpenNotebook={onOpenNotebook}
+        />
       </MemoryRouter>,
     )
     expect(screen.getByText('00:30:00')).toBeInTheDocument()
     expect(screen.getByText('Departure')).toBeInTheDocument()
     expect(screen.getByText('Success')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /OPEN DIARY/i })).toHaveAttribute('href', '/diary')
+    fireEvent.click(screen.getByRole('button', { name: 'Open travel notebook' }))
+    expect(onOpenNotebook).toHaveBeenCalledOnce()
     expect(screen.getByRole('link', { name: /VIEW STATISTICS/i })).toHaveAttribute(
       'href',
       '/statistics',

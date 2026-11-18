@@ -254,5 +254,11 @@
   "ui.03_arrive": "03 / ARRIVE",
   "ui.keep_your_story": "Keep your story.",
   "ui.write_in_your_travel_journal_and_revisit_every_mile_when_your_train_reaches_the_station": "Write in your travel journal and revisit every mile when your train reaches the station.",
-  "ui.made_for_the_miles_that_matter": "MADE FOR THE MILES THAT MATTER."
+  "ui.made_for_the_miles_that_matter": "MADE FOR THE MILES THAT MATTER.",
+  "immersive.enter": "Enter immersive mode",
+  "immersive.exit": "Exit immersive mode",
+  "notebook.open": "Open travel notebook",
+  "notebook.title": "Travel notebook",
+  "notebook.older": "Older entries",
+  "notebook.unsaved": "Unsaved changes"
 }

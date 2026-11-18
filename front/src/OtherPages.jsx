@@ -25,12 +25,15 @@ export function DiaryPage() {
   const [notice, setNotice] = useState('')
   const modalRef = useRef(null)
   const dirtyRef = useRef(false)
+  const requestId = useRef(0)
   async function load(query = '', path = null, append = false) {
+    const current = ++requestId.current
     setLoading(true)
     try {
       const data = await api.get(
         path || `/diary/${query ? `?search=${encodeURIComponent(query)}` : ''}`,
       )
+      if (current !== requestId.current) return
       setEntries((old) => (append ? [...old, ...data.results] : data.results))
       setNext(
         data.next
@@ -39,9 +42,9 @@ export function DiaryPage() {
       )
       setError('')
     } catch (err) {
-      setError(err.message)
+      if (current === requestId.current) setError(err.message)
     } finally {
-      setLoading(false)
+      if (current === requestId.current) setLoading(false)
     }
   }
   useEffect(() => {
