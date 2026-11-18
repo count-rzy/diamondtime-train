@@ -35,10 +35,17 @@ export default function Compartment({
 }) {
   useLanguage()
   const [arrivalPhase, setArrivalPhase] = useState('depot')
+  const [stationApproach, setStationApproach] = useState(false)
   const previousStatus = useRef(journey?.status)
   useEffect(() => {
     const previous = previousStatus.current
     previousStatus.current = journey?.status
+    if (journey?.status === 'break' && previous === 'active' && !settings.reduced_motion) {
+      setStationApproach(true)
+      const stopped = setTimeout(() => setStationApproach(false), 1200)
+      return () => clearTimeout(stopped)
+    }
+    setStationApproach(false)
     if (journey?.status !== 'completed' || previous === 'completed') return
     if (!previous || settings.reduced_motion) {
       setArrivalPhase('depot')
@@ -61,11 +68,16 @@ export default function Compartment({
     fixed === undefined ? journey?.duration_minutes || 60 : 60,
   )
   const arrived = journey?.status === 'completed' || progress >= 100
-  const moving = (preview || journey?.status === 'active') && !arrived && !settings.reduced_motion
-  const slowing = progress >= 92 && moving
+  const moving =
+    (preview || journey?.status === 'active' || stationApproach) &&
+    !arrived &&
+    !settings.reduced_motion
+  const slowing = (progress >= 92 || stationApproach) && moving
   const scene =
     journey?.status === 'break'
-      ? 'depot'
+      ? stationApproach
+        ? 'tunnel'
+        : 'depot'
       : arrived
         ? arrivalPhase === 'approach'
           ? 'industry'
@@ -83,7 +95,7 @@ export default function Compartment({
       : Math.max(0, (journey?.duration_minutes || 0) * 60 - remaining)
   return (
     <section
-      className={`compartment ${settings.crisp_pixels === false ? 'smooth-pixels' : ''} ${moving ? 'in-motion' : ''} ${slowing ? 'slowing' : ''} ${arrived ? 'at-station' : ''} ${settings.reduced_motion ? 'reduced' : ''} ${settings.animation_intensity === 'gentle' ? 'motion-gentle' : ''}`}
+      className={`compartment ${settings.crisp_pixels === false ? 'smooth-pixels' : ''} ${moving ? 'in-motion' : ''} ${slowing ? 'slowing' : ''} ${stationApproach ? 'station-approach' : ''} ${arrived ? 'at-station' : ''} ${settings.reduced_motion ? 'reduced' : ''} ${settings.animation_intensity === 'gentle' ? 'motion-gentle' : ''}`}
       aria-label={t('ui.train_compartment')}
     >
       <PixelWorld

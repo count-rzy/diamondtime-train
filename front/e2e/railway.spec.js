@@ -75,6 +75,7 @@ test('breaks, atlas, events, depot and existing carriage remain connected', asyn
   await page.screenshot({ path: path.join(root, '.local-qa', 'railway-atlas.png') })
   await page.getByRole('link', { name: 'Return to carriage' }).click()
   await page.getByRole('button', { name: 'Stop at station' }).click()
+  await expect(page.locator('.compartment')).toHaveClass(/station-approach/)
   await expect(page.getByText('Rest time remaining')).toBeVisible()
   await expect(page.locator('.compartment')).not.toHaveClass(/in-motion/)
   const stopped = await (await page.request.get('/api/journeys/1/')).json()
