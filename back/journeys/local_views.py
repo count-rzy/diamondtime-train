@@ -139,7 +139,7 @@ def frontend(request, path=""):
     candidate = (root / path).resolve()
     if not candidate.is_relative_to(root):
         raise Http404
-    if path.startswith(("assets/", "art/")):
+    if path.startswith(("assets/", "art/")) or path in {"favicon-16.png", "favicon-32.png"}:
         if not candidate.is_file():
             raise Http404
         return FileResponse(candidate.open("rb"))
