@@ -6,7 +6,14 @@ const panes = [
   '563,103 745,103 750,108 750,258 745,262 563,262 558,258 558,108',
 ]
 
-export default function PixelWorld({ palette, progress, particles, weather = true }) {
+export default function PixelWorld({
+  palette,
+  progress,
+  particles,
+  weather = true,
+  scene = 'valley',
+  event = null,
+}) {
   const rain = weather ? Math.max(0, Math.min(0.75, (progress - 28) / 12, (53 - progress) / 12)) : 0
 
   return (
@@ -32,34 +39,71 @@ export default function PixelWorld({ palette, progress, particles, weather = tru
       <rect width="836" height="470" fill="#0a152b" />
       <g clipPath="url(#pixel-panes)">
         <rect width="836" height="470" fill={palette.skyTop} />
-        <g className="pixel-valley-drift">
+        {scene === 'valley' ? (
+          <g className="pixel-valley-drift">
+            <image
+              href={`${ART}valley-${palette.stage}.png`}
+              width="836"
+              height="470"
+              opacity={1 - palette.stageMix}
+            />
+            <image
+              href={`${ART}valley-${palette.nextStage}.png`}
+              width="836"
+              height="470"
+              opacity={palette.stageMix}
+            />
+            <image
+              href={`${ART}architecture-lights.png`}
+              className="pixel-architecture-lights"
+              width="836"
+              height="470"
+              opacity={Math.max(0.22, palette.glow)}
+              style={{ '--layer-opacity': Math.max(0.22, palette.glow) }}
+            />
+            <image
+              href={`${ART}water-shimmer.png`}
+              className="pixel-water-shimmer"
+              width="836"
+              height="470"
+            />
+          </g>
+        ) : (
           <image
-            href={`${ART}valley-${palette.stage}.png`}
+            className="rail-region-art"
+            href={`${ART}rail-${scene}.png`}
             width="836"
             height="470"
-            opacity={1 - palette.stageMix}
+            preserveAspectRatio="xMidYMid slice"
+            style={{ filter: `brightness(${(1.22 - palette.stars * 0.42).toFixed(2)})` }}
           />
-          <image
-            href={`${ART}valley-${palette.nextStage}.png`}
-            width="836"
-            height="470"
-            opacity={palette.stageMix}
-          />
-          <image
-            href={`${ART}architecture-lights.png`}
-            className="pixel-architecture-lights"
-            width="836"
-            height="470"
-            opacity={Math.max(0.22, palette.glow)}
-            style={{ '--layer-opacity': Math.max(0.22, palette.glow) }}
-          />
-          <image
-            href={`${ART}water-shimmer.png`}
-            className="pixel-water-shimmer"
-            width="836"
-            height="470"
-          />
-        </g>
+        )}
+        {event && (
+          <g className="rail-world-event" aria-hidden="true">
+            {['freight', 'passenger'].includes(event) ? (
+              <g transform="translate(180 262)">
+                <rect width="150" height="19" fill="#1b2734" stroke="#65717a" strokeWidth="2" />
+                <rect x="15" y="3" width="22" height="8" fill="#e6b77b" />
+                <rect x="50" y="3" width="22" height="8" fill="#e6b77b" />
+                <circle cx="22" cy="21" r="5" fill="#171c25" />
+                <circle cx="125" cy="21" r="5" fill="#171c25" />
+              </g>
+            ) : event === 'birds' ? (
+              <path
+                d="M270 145q8 -8 16 0q8 -8 16 0 M328 162q7 -7 14 0q7 -7 14 0"
+                fill="none"
+                stroke="#252c3d"
+                strokeWidth="3"
+              />
+            ) : (
+              <g transform="translate(610 216)">
+                <rect width="6" height="75" fill="#29323b" />
+                <circle cx="3" cy="8" r="7" fill="#d7975b" />
+                <rect x="-12" y="71" width="31" height="4" fill="#4c5360" />
+              </g>
+            )}
+          </g>
+        )}
         <image href={`${ART}valley-fog.png`} className="pixel-fog" width="836" height="470" />
         <image
           href={`${ART}distant-birds.png`}

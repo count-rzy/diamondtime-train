@@ -22,13 +22,15 @@ export function TrainAudioProvider({ children }) {
     async function refresh() {
       if (refreshing) return refreshing
       refreshing = (async () => {
-        const [active, paused, recent] = await Promise.all([
+        const [active, paused, resting, recent] = await Promise.all([
           api.get('/journeys/?status=active'),
           api.get('/journeys/?status=paused'),
+          api.get('/journeys/?status=break'),
           api.get('/journeys/'),
         ])
         if (disposed) return
-        currentJourney = active.results[0] || paused.results[0] || recent.results[0] || null
+        currentJourney =
+          active.results[0] || paused.results[0] || resting.results[0] || recent.results[0] || null
         audio.configure(currentJourney, currentSettings)
       })()
         .catch(() => {

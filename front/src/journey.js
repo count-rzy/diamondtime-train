@@ -2,7 +2,7 @@ import { t as translate } from './i18n'
 export function progressFromRemaining(journey, elapsedSinceFetch = 0) {
   if (!journey) return 0
   if (journey.status === 'completed') return 100
-  if (journey.status === 'paused') return journey.progress
+  if (journey.status === 'paused' || journey.status === 'break') return journey.progress
   const total = journey.duration_minutes * 60
   return Math.min(
     100,

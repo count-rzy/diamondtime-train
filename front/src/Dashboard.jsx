@@ -5,6 +5,7 @@ import { progressFromRemaining, remainingFromSnapshot } from './journey'
 import Compartment from './Compartment'
 import { Link } from 'react-router-dom'
 import Notebook from './Notebook'
+import { deriveWorld } from './world'
 
 export default function Dashboard() {
   useLanguage()
@@ -23,6 +24,7 @@ export default function Dashboard() {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const completionRefresh = useRef(null)
+  const breakRefresh = useRef(null)
   const sceneRef = useRef(null)
   const controlsTimer = useRef(null)
   const nativeFullscreen = useRef(false)
@@ -83,14 +85,17 @@ export default function Dashboard() {
 
   const load = useCallback(async () => {
     try {
-      const [active, paused, recent] = await Promise.all([
+      const [active, paused, resting, recent] = await Promise.all([
         api.get('/journeys/?status=active'),
         api.get('/journeys/?status=paused'),
+        api.get('/journeys/?status=break'),
         api.get('/journeys/'),
       ])
       setJourneys([
         ...new Map(
-          [...active.results, ...paused.results, ...recent.results].map((item) => [item.id, item]),
+          [...active.results, ...paused.results, ...resting.results, ...recent.results].map(
+            (item) => [item.id, item],
+          ),
         ).values(),
       ])
       setFetchedAt(performance.now())
@@ -130,10 +135,15 @@ export default function Dashboard() {
   }, [load])
 
   const journey =
-    journeys.find((item) => item.status === 'active' || item.status === 'paused') || journeys[0]
+    journeys.find((item) => ['active', 'paused', 'break'].includes(item.status)) || journeys[0]
   const elapsed = (now - fetchedAt) / 1000
   const progress = progressFromRemaining(journey, elapsed)
   const remaining = remainingFromSnapshot(journey, elapsed)
+  const breakRemaining =
+    journey?.status === 'break'
+      ? Math.max(0, Math.ceil((journey.break_remaining_seconds || 0) - elapsed))
+      : 0
+  const world = deriveWorld(journey, elapsed, settings.atmospheric_events !== false)
 
   useEffect(() => {
     if (
@@ -146,6 +156,18 @@ export default function Dashboard() {
     }
     if (journey?.status !== 'active') completionRefresh.current = null
   }, [journey?.id, journey?.status, remaining, load])
+
+  useEffect(() => {
+    if (
+      journey?.status === 'break' &&
+      breakRemaining === 0 &&
+      breakRefresh.current !== journey.id
+    ) {
+      breakRefresh.current = journey.id
+      load()
+    }
+    if (journey?.status !== 'break') breakRefresh.current = null
+  }, [journey?.id, journey?.status, breakRemaining, load])
 
   async function onAction(action) {
     if (!journey) return
@@ -179,6 +201,8 @@ export default function Dashboard() {
         journey={journey}
         progress={progress}
         remaining={remaining}
+        breakRemaining={breakRemaining}
+        world={world}
         settings={settings}
         loading={loading}
         busy={busy}
