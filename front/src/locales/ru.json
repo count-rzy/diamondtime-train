@@ -254,5 +254,11 @@
   "ui.03_arrive": "03 / ПРИБЫТИЕ",
   "ui.keep_your_story": "Сохраните свою историю.",
   "ui.write_in_your_travel_journal_and_revisit_every_mile_when_your_train_reaches_the_station": "Пишите в путевом дневнике и возвращайтесь к пройденному пути после прибытия.",
-  "ui.made_for_the_miles_that_matter": "ДЛЯ ПУТЕШЕСТВИЙ СО СМЫСЛОМ."
+  "ui.made_for_the_miles_that_matter": "ДЛЯ ПУТЕШЕСТВИЙ СО СМЫСЛОМ.",
+  "immersive.enter": "Режим погружения",
+  "immersive.exit": "Выйти из режима",
+  "notebook.open": "Открыть путевой блокнот",
+  "notebook.title": "Путевой блокнот",
+  "notebook.older": "Более ранние записи",
+  "notebook.unsaved": "Есть несохранённые изменения"
 }

@@ -1,6 +1,17 @@
 import { t, useLanguage } from './i18n'
 import { Link } from 'react-router-dom'
-import { ArrowRight, BookOpen, MapPinned, Pause, Play, Plus, Settings2, Ticket } from 'lucide-react'
+import {
+  ArrowRight,
+  BookOpen,
+  Expand,
+  MapPinned,
+  Minimize,
+  Pause,
+  Play,
+  Plus,
+  Settings2,
+  Ticket,
+} from 'lucide-react'
 import { atmosphere, formatTime, journeyStage } from './journey'
 import PixelWorld from './PixelWorld'
 
@@ -14,6 +25,10 @@ export default function Compartment({
   error = '',
   onAction,
   preview = false,
+  onOpenNotebook,
+  immersive = false,
+  onEnterImmersive,
+  onExitImmersive,
 }) {
   useLanguage()
 
@@ -68,6 +83,26 @@ export default function Compartment({
             : `${journeyStage(progress).toUpperCase()} · ${Math.round(progress)}%`}
         </span>
       </div>
+      {!preview && (
+        <div className="cabin-mode-controls">
+          {immersive ? (
+            <button type="button" className="mode-button mode-exit" onClick={onExitImmersive}>
+              <Minimize size={16} />
+              {t('immersive.exit')}
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="mode-button"
+              onClick={onEnterImmersive}
+              disabled={!journey}
+            >
+              <Expand size={16} />
+              {t('immersive.enter')}
+            </button>
+          )}
+        </div>
+      )}
       {!preview && (
         <Link className="cabin-settings" to="/settings" aria-label={t('ui.open_settings')}>
           <Settings2 size={18} />
@@ -196,18 +231,39 @@ export default function Compartment({
           </p>
         )}
       </div>
-      <Link className="notebook-object" to={preview ? '/register' : '/diary'}>
-        <span className="object-top">
-          <BookOpen size={15} />
-          {t('ui.travel_journal')}{' '}
-        </span>
-        <strong>
-          {t('ui.notes_from')} <br />
-          {t('ui.the_road')}{' '}
-        </strong>
-        <span className="notebook-lines" />
-        <small>{preview ? t('ui.write_your_story') : t('ui.open_diary')}</small>
-      </Link>
+      {preview ? (
+        <Link className="notebook-object" to="/register">
+          <span className="object-top">
+            <BookOpen size={15} />
+            {t('ui.travel_journal')}{' '}
+          </span>
+          <strong>
+            {t('ui.notes_from')} <br />
+            {t('ui.the_road')}{' '}
+          </strong>
+          <span className="notebook-lines" />
+          <small>{preview ? t('ui.write_your_story') : t('ui.open_diary')}</small>
+        </Link>
+      ) : (
+        <button
+          type="button"
+          className="notebook-object"
+          onClick={onOpenNotebook}
+          aria-label={t('notebook.open')}
+        >
+          <span className="object-top">
+            <BookOpen size={15} />
+            {t('ui.travel_journal')}
+          </span>
+          <strong>
+            {t('ui.notes_from')}
+            <br />
+            {t('ui.the_road')}
+          </strong>
+          <span className="notebook-lines" />
+          <small>{t('ui.open_diary')}</small>
+        </button>
+      )}
       <Link className="ticket-object" to={preview ? '/register' : '/statistics'}>
         <span>
           <Ticket size={16} />

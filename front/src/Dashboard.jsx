@@ -4,6 +4,7 @@ import { api } from './api'
 import { progressFromRemaining, remainingFromSnapshot } from './journey'
 import Compartment from './Compartment'
 import { Link } from 'react-router-dom'
+import Notebook from './Notebook'
 
 export default function Dashboard() {
   useLanguage()
@@ -22,6 +23,63 @@ export default function Dashboard() {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const completionRefresh = useRef(null)
+  const sceneRef = useRef(null)
+  const controlsTimer = useRef(null)
+  const nativeFullscreen = useRef(false)
+  const [immersive, setImmersive] = useState(false)
+  const [controlsVisible, setControlsVisible] = useState(false)
+  const [notebookOpen, setNotebookOpen] = useState(false)
+
+  useEffect(() => {
+    document.body.classList.toggle('journey-immersive', immersive)
+    return () => document.body.classList.remove('journey-immersive')
+  }, [immersive])
+
+  useEffect(() => {
+    const fullscreenChanged = () => {
+      if (nativeFullscreen.current && !document.fullscreenElement) {
+        nativeFullscreen.current = false
+        setImmersive(false)
+      }
+    }
+    document.addEventListener('fullscreenchange', fullscreenChanged)
+    return () => document.removeEventListener('fullscreenchange', fullscreenChanged)
+  }, [notebookOpen])
+
+  useEffect(() => {
+    const onKey = (event) => {
+      if (event.key !== 'Escape' || notebookOpen || !immersive) return
+      event.preventDefault()
+      exitImmersive()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [immersive, notebookOpen])
+
+  useEffect(() => () => clearTimeout(controlsTimer.current), [])
+
+  function showControls() {
+    setControlsVisible(true)
+    clearTimeout(controlsTimer.current)
+    controlsTimer.current = setTimeout(() => setControlsVisible(false), 4000)
+  }
+
+  async function enterImmersive() {
+    setImmersive(true)
+    showControls()
+    try {
+      await sceneRef.current?.closest('.shell-main')?.requestFullscreen?.()
+      nativeFullscreen.current = !!document.fullscreenElement
+    } catch {
+      nativeFullscreen.current = false
+    }
+  }
+
+  function exitImmersive() {
+    nativeFullscreen.current = false
+    setImmersive(false)
+    if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {})
+  }
 
   const load = useCallback(async () => {
     try {
@@ -104,7 +162,13 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="compartment-dashboard">
+    <div
+      ref={sceneRef}
+      className={`compartment-dashboard ${controlsVisible ? 'controls-visible' : ''}`}
+      onPointerMove={immersive ? showControls : undefined}
+      onTouchStart={immersive ? showControls : undefined}
+      onKeyDown={immersive ? showControls : undefined}
+    >
       {legacyProfiles > 1 && (
         <div className="legacy-notice">
           {t('ui.your_previous_profiles_and_journeys_are_preserved')}{' '}
@@ -120,7 +184,12 @@ export default function Dashboard() {
         busy={busy}
         error={error}
         onAction={onAction}
+        onOpenNotebook={() => setNotebookOpen(true)}
+        immersive={immersive}
+        onEnterImmersive={enterImmersive}
+        onExitImmersive={exitImmersive}
       />
+      {notebookOpen && <Notebook journey={journey} onClose={() => setNotebookOpen(false)} />}
     </div>
   )
 }

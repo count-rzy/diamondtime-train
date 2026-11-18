@@ -2958,3 +2958,329 @@ html[lang='ru'] .ticket-object strong {
     font-size: 12px;
   }
 }
+
+.cabin-mode-controls {
+  position: absolute;
+  top: 17%;
+  right: 7%;
+  z-index: 6;
+}
+.mode-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 42px;
+  padding: 9px 12px;
+  color: #f5d8ad;
+  background: #142132e6;
+  border: 2px solid #b98d68;
+  box-shadow: 4px 4px 0 #0b1424;
+  font:
+    8px 'Press Start 2P',
+    monospace;
+  cursor: pointer;
+}
+.mode-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.mode-button:focus-visible,
+.notebook-object:focus-visible {
+  outline: 3px solid #f5d8ad;
+  outline-offset: 4px;
+}
+.cabin-settings {
+  top: calc(17% + 54px);
+}
+button.notebook-object {
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+.journey-immersive .app-shell {
+  display: block;
+}
+.journey-immersive .sidebar,
+.journey-immersive .mobile-header,
+.journey-immersive .legacy-notice {
+  display: none !important;
+}
+.journey-immersive .shell-main {
+  width: 100%;
+  margin: 0;
+  position: relative;
+}
+.journey-immersive .compartment-dashboard,
+.journey-immersive .compartment {
+  height: 100vh;
+  min-height: 0;
+  padding: 0;
+}
+.journey-immersive .cabin-art {
+  object-fit: cover;
+}
+.journey-immersive .cabin-heading,
+.journey-immersive .stage-indicator,
+.journey-immersive .cabin-settings,
+.journey-immersive .cabin-board,
+.journey-immersive .ticket-object,
+.journey-immersive .cabin-new {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s;
+}
+.journey-immersive .controls-visible .cabin-heading,
+.journey-immersive .controls-visible .stage-indicator,
+.journey-immersive .controls-visible .cabin-board {
+  opacity: 1;
+  pointer-events: auto;
+}
+.journey-immersive .mode-exit {
+  opacity: 0.72;
+}
+.journey-immersive .mode-exit:hover,
+.journey-immersive .mode-exit:focus-visible {
+  opacity: 1;
+}
+.journey-immersive .music-player.in-world {
+  position: fixed;
+  z-index: 9;
+}
+
+.notebook-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: #07111bc4;
+  overflow: auto;
+}
+.notebook-dialog {
+  width: min(1060px, 100%);
+  max-height: min(800px, calc(100dvh - 36px));
+  display: flex;
+  flex-direction: column;
+  color: #3b302b;
+  animation: notebook-open 0.25s ease-out;
+}
+.notebook-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 16px;
+  background: #493a3b;
+  border: 3px solid #251f29;
+  color: #f3dfb9;
+  font:
+    10px 'Press Start 2P',
+    monospace;
+}
+.notebook-toolbar span {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.notebook-toolbar button {
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  min-width: 44px;
+  min-height: 44px;
+}
+.notebook-book {
+  position: relative;
+  min-height: 0;
+  overflow: auto;
+  display: grid;
+  grid-template-columns: 42% 58%;
+  border: 7px solid #4f3a38;
+  box-shadow:
+    12px 18px 0 #03070baa,
+    inset 0 0 0 3px #b88767;
+}
+.notebook-book::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 42%;
+  width: 12px;
+  transform: translateX(-50%);
+  background: linear-gradient(90deg, #765447, #c09a71 38%, #f4ddb1 70%, #937056);
+  box-shadow: 3px 0 7px #3c292d66;
+  pointer-events: none;
+}
+.notebook-page {
+  min-width: 0;
+  min-height: 0;
+  padding: 28px;
+  background:
+    url('/art/paper-texture.png') repeat,
+    #edd5aa;
+  image-rendering: pixelated;
+  box-shadow:
+    inset 0 0 0 3px #cba77e,
+    inset 0 0 0 9px #e3c69c;
+}
+.notebook-index {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow: auto;
+  border-right: 2px solid #9f795b;
+}
+.notebook-search {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border-bottom: 2px solid #9c7657;
+}
+.notebook-search input,
+.notebook-title,
+.notebook-content {
+  width: 100%;
+  background: transparent;
+  border: 0;
+  color: #312c2c;
+  font-family: Georgia, 'Noto Sans', serif;
+  outline-offset: 3px;
+}
+.notebook-search input {
+  min-height: 42px;
+  font-size: 15px;
+}
+.notebook-new,
+.notebook-list button,
+.notebook-footer button {
+  cursor: pointer;
+  color: #382f31;
+  background: #e5c99b;
+  border: 2px solid #997353;
+  min-height: 42px;
+}
+.notebook-new,
+.notebook-footer button {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+}
+.notebook-list {
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.notebook-list button {
+  text-align: left;
+  padding: 10px;
+}
+.notebook-list button.selected {
+  background: #cba975;
+  box-shadow: inset 4px 0 #7b5549;
+}
+.notebook-list button strong,
+.notebook-list button small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.notebook-list button small {
+  margin-top: 5px;
+}
+.notebook-writing {
+  display: flex;
+  flex-direction: column;
+  min-height: 560px;
+}
+.notebook-page-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 15px;
+  font-size: 12px;
+  color: #76584b;
+}
+.notebook-title {
+  margin: 22px 0 12px;
+  padding: 8px 2px;
+  font-size: 24px;
+  font-weight: bold;
+  border-bottom: 2px solid #ad8c68;
+}
+.notebook-content {
+  flex: 1;
+  min-height: 210px;
+  padding: 9px 2px;
+  resize: none;
+  font-size: 17px;
+  line-height: 1.8;
+  background: repeating-linear-gradient(to bottom, transparent 0 30px, #aa8d694f 30px 31px);
+  caret-color: #402b34;
+}
+.notebook-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 2px solid #ad8c68;
+}
+.notebook-footer span {
+  flex: 1;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.notebook-footer button:disabled,
+.notebook-new:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+@keyframes notebook-open {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (max-width: 700px) {
+  .notebook-backdrop {
+    padding: 6px;
+  }
+  .notebook-dialog {
+    max-height: calc(100dvh - 12px);
+  }
+  .notebook-book {
+    grid-template-columns: 1fr;
+    overflow: auto;
+  }
+  .notebook-book::after {
+    display: none;
+  }
+  .notebook-index {
+    max-height: 220px;
+    border-right: 0;
+    border-bottom: 4px solid #987151;
+  }
+  .notebook-writing {
+    min-height: 430px;
+  }
+  .notebook-page {
+    padding: 17px;
+  }
+  .notebook-content {
+    min-height: 190px;
+  }
+  .cabin-mode-controls {
+    right: 4%;
+    top: 22%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .notebook-dialog {
+    animation: none;
+  }
+}
