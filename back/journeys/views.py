@@ -9,7 +9,7 @@ from rest_framework.decorators import action, api_view
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 
-from .models import DiaryEntry, Journey, UserSettings
+from .models import DiaryEntry, Journey, JourneyBreak, UserSettings
 from .serializers import DiarySerializer, JourneySerializer, SettingsSerializer, UserSerializer
 
 
@@ -26,7 +26,7 @@ class JourneyViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         queryset = Journey.objects.filter(user=self.request.user)
-        for journey in queryset.filter(status=Journey.Status.ACTIVE, expected_arrival_at__lte=timezone.now()):
+        for journey in queryset.filter(status__in=[Journey.Status.ACTIVE, Journey.Status.BREAK]):
             journey.reconcile()
         status_filter = self.request.query_params.get("status")
         if status_filter in Journey.Status.values:
@@ -41,7 +41,7 @@ class JourneyViewSet(viewsets.ModelViewSet):
                 get_user_model().objects.select_for_update().get(pk=self.request.user.pk)
                 for journey in Journey.objects.filter(user=self.request.user, status=Journey.Status.ACTIVE):
                     journey.reconcile()
-                if Journey.objects.filter(user=self.request.user, status__in=[Journey.Status.ACTIVE, Journey.Status.PAUSED]).exists():
+                if Journey.objects.filter(user=self.request.user, status__in=[Journey.Status.ACTIVE, Journey.Status.PAUSED, Journey.Status.BREAK]).exists():
                     raise ValidationError({"detail": "Finish the current journey before departing again."})
                 serializer.save(user=self.request.user)
         except IntegrityError as exc:
@@ -53,6 +53,8 @@ class JourneyViewSet(viewsets.ModelViewSet):
             raise ValidationError("Only active journeys can be edited.")
         if "duration_minutes" in serializer.validated_data:
             raise ValidationError({"duration_minutes": "Duration cannot change after departure."})
+        if "planned_breaks" in serializer.validated_data:
+            raise ValidationError({"planned_breaks": "Breaks cannot change after departure."})
         serializer.save()
 
     @action(detail=True, methods=["post"])
@@ -82,6 +84,25 @@ class JourneyViewSet(viewsets.ModelViewSet):
             journey.save(update_fields=["paused_seconds", "expected_arrival_at", "paused_at", "status"])
         return Response(self.get_serializer(journey).data)
 
+    @action(detail=True, methods=["post"], url_path="station-break")
+    def station_break(self, request, pk=None):
+        with transaction.atomic():
+            journey = get_object_or_404(self.get_queryset().select_for_update(), pk=pk)
+            if journey.status != Journey.Status.ACTIVE:
+                raise ValidationError("Only a traveling journey can stop at a station.")
+            pending = journey.breaks.select_for_update().filter(status=JourneyBreak.Status.PENDING).order_by("at_seconds").first()
+            if not pending:
+                raise ValidationError("No planned station break remains.")
+            now = timezone.now()
+            pending.status = JourneyBreak.Status.ACTIVE
+            pending.started_at = now
+            pending.save(update_fields=["status", "started_at"])
+            journey.status = Journey.Status.BREAK
+            journey.break_started_at = now
+            journey.break_ends_at = now + timedelta(seconds=pending.duration_seconds)
+            journey.save(update_fields=["status", "break_started_at", "break_ends_at"])
+        return Response(self.get_serializer(journey).data)
+
     @action(detail=True, methods=["post"])
     def complete(self, request, pk=None):
         with transaction.atomic():
@@ -92,9 +113,17 @@ class JourneyViewSet(viewsets.ModelViewSet):
             if journey.paused_at:
                 journey.paused_seconds += max(0, round((now - journey.paused_at).total_seconds()))
                 journey.paused_at = None
+            if journey.status == Journey.Status.BREAK:
+                current = journey.breaks.get(status=JourneyBreak.Status.ACTIVE)
+                current.status = JourneyBreak.Status.COMPLETED
+                current.ended_at = now
+                current.save(update_fields=["status", "ended_at"])
+                journey.break_seconds += max(0, round((now - journey.break_started_at).total_seconds()))
+                journey.break_started_at = None
+                journey.break_ends_at = None
             journey.status = Journey.Status.COMPLETED
             journey.completed_at = now
-            journey.save(update_fields=["paused_seconds", "paused_at", "status", "completed_at"])
+            journey.save(update_fields=["paused_seconds", "paused_at", "break_seconds", "break_started_at", "break_ends_at", "status", "completed_at"])
         return Response(self.get_serializer(journey).data)
 
 
