@@ -3279,6 +3279,182 @@ button.notebook-object {
     top: 22%;
   }
 }
+
+/* Keep the navigation in its own scroll area, beneath the fixed brand. */
+.sidebar {
+  min-height: 0;
+  overflow: hidden;
+}
+.sidebar-top {
+  flex: none;
+}
+.sidebar-scroll {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  touch-action: pan-y;
+}
+.sidebar-scroll nav {
+  flex: none;
+}
+.sidebar-bottom {
+  flex: none;
+}
+
+/* The ticket and atlas are separate paper objects in one constrained stack. */
+.cabin-objects {
+  display: contents;
+}
+.cabin-objects-right {
+  position: absolute;
+  right: 4%;
+  bottom: 9%;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 14px;
+}
+.cabin-objects-right .ticket-object,
+.cabin-objects-right .atlas-object {
+  position: relative;
+  right: auto;
+  bottom: auto;
+  flex: none;
+}
+.window-arrival {
+  top: 25%;
+}
+@media (min-width: 801px) and (max-width: 1400px) {
+  .cabin-board {
+    width: min(620px, calc(100% - 300px));
+  }
+}
+@media (min-width: 801px) and (max-width: 1100px) {
+  .compartment {
+    height: 1050px;
+  }
+  .window-arrival {
+    top: 22%;
+  }
+  .cabin-board {
+    bottom: 28%;
+    width: min(620px, calc(100% - 32px));
+  }
+  .cabin-objects-right {
+    bottom: 3%;
+  }
+}
+.journey-immersive .shell-main {
+  height: 100dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.journey-immersive .compartment-dashboard,
+.journey-immersive .compartment {
+  height: auto;
+  min-height: 100dvh;
+}
+.journey-immersive .cabin-objects-right {
+  bottom: 110px;
+}
+
+@media (max-width: 800px) {
+  .sidebar {
+    height: 100dvh;
+  }
+  .compartment,
+  .journey-immersive .compartment {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: auto;
+    min-height: max(100dvh, 900px);
+    overflow: visible;
+  }
+  .cabin-art,
+  .cabin-vignette {
+    pointer-events: none;
+  }
+  .cabin-heading {
+    position: relative;
+    top: auto;
+    left: auto;
+    transform: none;
+    width: min(88%, 420px);
+    min-width: 0;
+    max-width: none;
+    margin: 16px auto 0;
+  }
+  .stage-indicator {
+    top: 145px;
+  }
+  .cabin-mode-controls {
+    top: 145px;
+    right: 4%;
+  }
+  .cabin-settings {
+    top: 205px;
+  }
+  .window-arrival {
+    position: relative;
+    top: auto;
+    left: auto;
+    transform: none;
+    width: min(90%, 360px);
+    max-width: none;
+    margin-top: 185px;
+  }
+  .cabin-board {
+    position: relative;
+    left: auto;
+    bottom: auto;
+    transform: none;
+    width: calc(100% - 24px);
+    margin-top: 370px;
+  }
+  .at-station .cabin-board {
+    margin-top: 18px;
+  }
+  .cabin-objects {
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+    width: calc(100% - 30px);
+    margin: 28px auto 110px;
+  }
+  .cabin-objects .notebook-object {
+    position: relative;
+    left: auto;
+    bottom: auto;
+    flex: none;
+  }
+  .cabin-objects-right,
+  .journey-immersive .cabin-objects-right {
+    position: relative;
+    right: auto;
+    bottom: auto;
+    flex: none;
+    gap: 12px;
+  }
+  .journey-immersive .cabin-mode-controls {
+    position: fixed;
+    top: 145px;
+    right: 4%;
+    z-index: 60;
+  }
+  .journey-immersive .compartment-dashboard {
+    height: auto;
+    min-height: 100dvh;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .notebook-dialog {
     animation: none;
