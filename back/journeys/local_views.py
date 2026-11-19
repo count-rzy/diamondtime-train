@@ -45,8 +45,7 @@ def profiles(request):
 
 @api_view(["GET"])
 def data_info(request):
-    return Response({"directory": str(settings.DATA_DIR), "backups": sorted(p.name for p in (settings.DATA_DIR / "backups").glob("*.zip")),
-                     "restore": "Stop Last Train, then run restore.bat and confirm the selected backup."})
+    return Response({"directory": str(settings.DATA_DIR), "backups": sorted(p.name for p in (settings.DATA_DIR / "backups").glob("*.zip"))})
 
 
 @api_view(["POST"])

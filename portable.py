@@ -104,6 +104,8 @@ def run():
             return
         state = launcher.read_state()
         existing = bool(state and launcher.owned_process(state))
+        if not existing and launcher.unverified_live_process(state):
+            raise RuntimeError("This profile points to a living but unverified process. No new server was started.")
         if existing:
             if not launcher.portable_owner(state):
                 raise RuntimeError("This profile is owned by another or unverified process. Close it through its own launcher before retrying.")

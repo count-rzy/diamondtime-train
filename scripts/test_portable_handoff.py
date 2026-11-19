@@ -16,8 +16,8 @@ import zipfile
 import psutil
 
 ROOT = Path(__file__).resolve().parent.parent
-OLD_ZIP = ROOT / "dist" / "LastTrain-v0.3.0-Windows-x64.zip"
-NEW_ZIP = ROOT / "dist" / "LastTrain-v0.3.1-Windows-x64.zip"
+OLD_ZIP = ROOT / "dist" / "LastTrain-v0.3.1-Windows-x64.zip"
+NEW_ZIP = ROOT / "dist" / "LastTrain-v1.0.0-exp.1-Windows-x64.zip"
 QA = ROOT / ".local-qa"
 
 
@@ -235,8 +235,10 @@ def main():
                 check(api(opener(), base(old_state), "/api/health/")["instance"] == old_state["instance"],
                       "old process survives folder move")
 
+            handoff_at = time.monotonic()
             confirmed = launch_with_dialog(new, env, ("Закрыть и продолжить", "Close and continue"))
             check(confirmed.wait(timeout=120) == 0, "confirmed handoff completes")
+            print(f"Confirmed cross-build handoff: {time.monotonic() - handoff_at:.2f}s", flush=True)
             new_state = state(data)
             check(new_state["pid"] != old_state["pid"] and not psutil.pid_exists(old_state["pid"])
                   and psutil.pid_exists(new_state["pid"]), "A exits before B owns the profile")

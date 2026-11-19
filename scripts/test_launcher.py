@@ -61,9 +61,12 @@ def main():
         # A stale state pointing at THIS unrelated test runner must never kill it.
         current = psutil.Process()
         (data / "server.json").write_text(json.dumps({"pid": current.pid, "created": current.create_time(), "instance": "not-our-server", "port": port}))
-        print(batch("stop"))
+        refused = subprocess.run([sys.executable, str(ROOT / "back/launcher.py"), "stop"],
+                                 env=env, text=True, capture_output=True)
+        assert refused.returncode != 0 and "identity cannot be verified" in refused.stderr
         assert current.is_running()
-        assert not (data / "server.json").exists()
+        assert (data / "server.json").exists()
+        (data / "server.json").unlink()  # Disposable forged state from this test.
         # Second initialization must keep the local profile and records.
         import sqlite3
         from contextlib import closing

@@ -174,6 +174,15 @@ def owned_process(state):
         return None
 
 
+def unverified_live_process(state):
+    """A reused or mismatched PID is not permission to use the same profile."""
+    import psutil
+    try:
+        return bool(state and psutil.pid_exists(int(state["pid"])) and not owned_process(state))
+    except (KeyError, TypeError, ValueError):
+        return False
+
+
 def portable_owner(state):
     """Recognize old packaged builds without requiring their files to exist."""
     import psutil
@@ -198,14 +207,7 @@ def handoff(state):
     process = portable_owner(state)
     if not process or not ready(state):
         raise RuntimeError("Cannot verify the previous portable instance. It was left running; see startup.log.")
-    (DATA / "stop.request").write_text(state["instance"], encoding="ascii")
-    try:
-        process.wait(timeout=25)
-    except Exception as exc:
-        request = DATA / "stop.request"
-        if request.is_file() and request.read_text(encoding="ascii") == state["instance"]:
-            request.unlink(missing_ok=True)
-        raise RuntimeError("The previous Last Train version did not shut down. The new version was not started; try again after closing it normally.") from exc
+    request_shutdown(state, process)
     # Process exit alone does not prove the endpoint and ownership mutex are free.
     with lock("server.lock"):
         with socket.socket() as probe:
@@ -236,6 +238,8 @@ def ready(state):
 def start(no_browser=False):
     state = read_state()
     existing = bool(state and owned_process(state))
+    if not existing and unverified_live_process(state):
+        raise RuntimeError("This profile points to a living but unverified process. No new server was started.")
     if existing:
         if not compatible_state(state):
             raise RuntimeError("Another Last Train build is running with this data profile. Close it using its own Stop Last Train.exe before starting this version.")
@@ -285,18 +289,97 @@ def start(no_browser=False):
 def stop():
     state = read_state()
     process = owned_process(state) if state else None
+    if not process and unverified_live_process(state):
+        raise RuntimeError("The recorded process is alive but its identity cannot be verified. Nothing was stopped or removed.")
     if process and not compatible_state(state):
         raise RuntimeError("This Stop Last Train belongs to a different build. Use the Stop EXE beside the running Start EXE.")
     if process:
-        if getattr(sys, "frozen", False):
-            (DATA / "stop.request").write_text(state["instance"], encoding="ascii")
-        else:
-            process.terminate()
-        process.wait(timeout=25)
+        request_shutdown(state, process)
         print("Stopped the owned Last Train server.")
     else:
         print("No owned Last Train server running; stale state ignored.")
     STATE.unlink(missing_ok=True)
+
+
+def request_shutdown(state, process):
+    """Signal only the verified owner and wait for its actual process exit."""
+    (DATA / "stop.request").write_text(state["instance"], encoding="ascii")
+    started = time.monotonic()
+    try:
+        process.wait(timeout=25)
+    except Exception as exc:
+        phase = "no shutdown status from the previous build"
+        try:
+            status = json.loads((DATA / "stop.status").read_text(encoding="utf-8"))
+            if status.get("instance") == state["instance"]:
+                phase = status.get("phase", phase)
+        except (OSError, ValueError):
+            pass
+        # The request may already be in progress. Removing it here would not
+        # cancel the old process and could mislead another launcher.
+        raise RuntimeError(
+            f"The owned Last Train process has not exited after {time.monotonic() - started:.1f}s "
+            f"(shutdown phase: {phase}). The new version was not started."
+        ) from exc
+
+
+def serve_portable(application, port, instance):
+    """Drain active work, then close every Waitress socket, including idle tabs."""
+    from threading import Thread
+    from waitress import create_server, wasyncore
+    from django.db import connections
+
+    server = create_server(application, host="127.0.0.1", port=port,
+                           threads=4, max_request_body_size=101*1024*1024)
+    worker = Thread(target=server.run, daemon=True)
+    worker.start()
+    request = DATA / "stop.request"
+    status_path = DATA / "stop.status"
+    started = time.monotonic()
+
+    def phase(name):
+        elapsed = time.monotonic() - started
+        print(f"shutdown +{elapsed:.3f}s: {name}", flush=True)
+        status_path.write_text(json.dumps({"instance": instance, "phase": name,
+                                           "elapsed": round(elapsed, 3)}), encoding="utf-8")
+
+    try:
+        while worker.is_alive():
+            if request.is_file() and request.read_text(encoding="ascii") == instance:
+                phase("request received")
+                break
+            time.sleep(.2)
+    finally:
+        phase("closing listener")
+        # BaseWSGIServer.close() also closes Waitress's wake-up trigger.
+        # Active handlers still need that trigger to finish their responses.
+        wasyncore.dispatcher.close(server)
+        dispatcher = server.task_dispatcher
+        deadline = time.monotonic() + 20
+        while True:
+            with dispatcher.lock:
+                busy = bool(dispatcher.queue or dispatcher.active_count)
+            if not busy:
+                break
+            if time.monotonic() >= deadline:
+                phase("waiting for active request to finish safely")
+                deadline = time.monotonic() + 20
+            time.sleep(.1)
+        phase("draining Waitress workers")
+        dispatcher.shutdown(cancel_pending=False, timeout=20)
+        with dispatcher.lock:
+            while dispatcher.threads:
+                phase("waiting for active request to finish")
+                dispatcher.thread_exit_cv.wait(timeout=1)
+        phase("closing HTTP channels")
+        wasyncore.close_all(server._map)
+        worker.join(timeout=5)
+        if worker.is_alive():
+            raise RuntimeError("Waitress event loop did not exit after its sockets closed")
+        phase("closing SQLite connections")
+        connections.close_all()
+        request.unlink(missing_ok=True)
+        phase("server cleanup complete")
 
 
 def main():
@@ -311,30 +394,7 @@ def main():
         with lock("server.lock"):
             os.environ["LASTTRAIN_INSTANCE"] = args.instance
             from config.wsgi import application
-            if getattr(sys, "frozen", False):
-                from waitress import create_server
-                from threading import Thread
-                server = create_server(application, host="127.0.0.1", port=args.port,
-                                       threads=4, max_request_body_size=101*1024*1024)
-                worker = Thread(target=server.run, daemon=True)
-                worker.start()
-                request = DATA / "stop.request"
-                try:
-                    while worker.is_alive():
-                        if request.is_file() and request.read_text(encoding="ascii") == args.instance:
-                            break
-                        time.sleep(.2)
-                finally:
-                    server.close()
-                    server.task_dispatcher.shutdown()
-                    worker.join()
-                    from django.db import connections
-                    connections.close_all()
-                    request.unlink(missing_ok=True)
-            else:
-                from waitress import serve
-                serve(application, host="127.0.0.1", port=args.port, threads=4,
-                      max_request_body_size=101*1024*1024)
+            serve_portable(application, args.port, args.instance)
         return
     with lock("launcher.lock"):
         if args.command == "start":

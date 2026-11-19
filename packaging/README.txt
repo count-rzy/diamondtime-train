@@ -1,4 +1,4 @@
-LAST TRAIN v0.3 - WINDOWS PORTABLE
+LAST TRAIN v1.0 EXP - WINDOWS PORTABLE
 
 1. Extract the entire ZIP to a writable folder.
 2. Double-click "Start Last Train.exe". Wait for the browser to open.

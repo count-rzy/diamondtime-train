@@ -52,17 +52,15 @@ export default function DataManagement() {
       <p>
         {t('ui.stored_on_this_computer')} <code>{data?.directory || t('ui.loading')}</code>
       </p>
+      <p>{t('data.local_updates')}</p>
       <button className="button secondary" disabled={busy} onClick={backup}>
         {busy ? t('ui.creating_backup') : t('ui.create_backup')}
       </button>
       <a className="button secondary" href="/api/local/export/" download>
         {t('ui.export_journeys_diary')}{' '}
       </a>
-      <p>
-        {t('ui.to_restore_stop_last_train_run')} <code>restore.bat</code>
-        {t('ui.select_a_backup_zip_and_type_restore_a_safety_backup_is_kept')}{' '}
-      </p>
-      <p>{t('ui.keep_a_backup_outside_this_project_before_replacing_or_deleting_its_folder')}</p>
+      <p>{t('data.backup_guidance')}</p>
+      <p>{t('data.restore_unavailable')}</p>
       {profiles?.profiles.length > 1 && (
         <label>
           <strong>{t('ui.stored_profiles')}</strong>

@@ -42,6 +42,18 @@ export const extra = {
   'diary.edit': ['Edit {title}', 'Редактировать: {title}'],
   'diary.delete': ['Delete {title}', 'Удалить: {title}'],
   'data.backup_saved': ['Backup saved: {path}', 'Резервная копия сохранена: {path}'],
+  'data.local_updates': [
+    'Your journeys, diary, settings, and imported audio stay on this computer when you update the app.',
+    'Поездки, дневник, настройки и добавленное аудио хранятся на этом компьютере и сохраняются при обновлении приложения.',
+  ],
+  'data.backup_guidance': [
+    'Create a backup regularly and keep a copy of its ZIP file in another safe location.',
+    'Регулярно создавайте резервные копии и храните копию ZIP-файла в другом надёжном месте.',
+  ],
+  'data.restore_unavailable': [
+    'Restoring a backup from the running app is not available yet. Keep the ZIP file for recovery; do not replace the database while Last Train is running.',
+    'Восстановление резервной копии из работающего приложения пока недоступно. Сохраните ZIP-файл; не заменяйте базу данных, пока Last Train запущен.',
+  ],
   'data.profile_records': ['{name} — {journeys}, {notes}', '{name} — {journeys}, {notes}'],
   'count.journeys_one': ['{count} journey', '{count} поездка'],
   'count.journeys_few': ['{count} journeys', '{count} поездки'],

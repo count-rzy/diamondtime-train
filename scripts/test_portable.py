@@ -1,5 +1,6 @@
 """Exercise the extracted EXE with an empty, isolated Windows profile."""
 import argparse
+import http.client
 import json
 import os
 import re
@@ -45,7 +46,7 @@ def request(url):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--zip", default=str(ROOT / "dist" / "LastTrain-v0.3.0-Windows-x64.zip"))
+    parser.add_argument("--zip", default=str(ROOT / "dist" / "LastTrain-v1.0.0-exp.1-Windows-x64.zip"))
     parser.add_argument("--browser", action="store_true")
     parser.add_argument("--replacement-zip")
     parser.add_argument("--allow-older-browser-log", action="store_true")
@@ -139,8 +140,17 @@ def main():
                 command = ROOT / "front" / "node_modules" / ".bin" / "playwright.cmd"
                 subprocess.run([str(command), "test", "e2e/portable.spec.js"],
                                cwd=ROOT / "front", env=browser_env, check=True, timeout=240)
-            run_exe(stop, env)
-            time.sleep(1)
+            idle = http.client.HTTPConnection("127.0.0.1", state["port"], timeout=5)
+            idle.request("GET", "/api/health/")
+            check(idle.getresponse().status == 200, "idle browser-style connection established")
+            stopped_at = time.monotonic()
+            try:
+                run_exe(stop, env)
+            finally:
+                idle.close()
+            elapsed = time.monotonic() - stopped_at
+            print(f"Stop EXE with idle HTTP connection: {elapsed:.2f}s", flush=True)
+            check(elapsed < 10, "Stop EXE exits promptly with an idle connection")
             check(request_is_down(base), "Stop EXE shuts down Waitress")
             check(not psutil.pid_exists(state["pid"]), "stop leaves no server process")
             replacement = temporary / "replacement"

@@ -6,7 +6,7 @@ from pathlib import Path
 
 root = Path(__file__).resolve().parent.parent
 folder = root / "dist" / "LastTrain-Windows-x64"
-target = root / "dist" / "LastTrain-v0.3.1-Windows-x64.zip"
+target = root / "dist" / "LastTrain-v1.0.0-exp.1-Windows-x64.zip"
 temporary = target.with_suffix(".zip.tmp")
 if not (folder / "Start Last Train.exe").is_file() or not (folder / "_internal" / "front" / "dist" / "index.html").is_file():
     sys.exit("Portable distribution is incomplete.")
