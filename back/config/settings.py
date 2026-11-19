@@ -1,7 +1,9 @@
 """Offline, loopback-only Last Train configuration."""
 import os
+import sys
 from pathlib import Path
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = (Path(sys._MEIPASS) / "back" if getattr(sys, "frozen", False)
+            else Path(__file__).resolve().parent.parent)
 DATA_DIR = Path(os.environ.get("LASTTRAIN_DATA_DIR", BASE_DIR.parent / "data")).resolve()
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "lasttrain-local-no-login-no-signed-credentials")

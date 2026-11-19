@@ -1,6 +1,7 @@
 """One local Waitress server; private data stays outside source files."""
 import argparse
 import contextlib
+import http.client
 import json
 import os
 import socket
@@ -12,7 +13,7 @@ import uuid
 import webbrowser
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(sys._MEIPASS) if getattr(sys, "frozen", False) else Path(__file__).resolve().parent.parent
 DATA = Path(os.environ.get("LASTTRAIN_DATA_DIR", ROOT / "data")).resolve()
 DATA.mkdir(parents=True, exist_ok=True)
 STATE = DATA / "server.json"
@@ -103,7 +104,12 @@ def owned_process(state):
         command = process.cmdline()
         if abs(process.create_time() - state["created"]) > .01:
             return None
-        if str(Path(__file__).resolve()) not in command or state["instance"] not in command or "_serve" not in command:
+        executable = Path(sys.executable if getattr(sys, "frozen", False) else __file__).resolve()
+        if getattr(sys, "frozen", False) and executable.name.lower() == "stop last train.exe":
+            executable = executable.with_name("Start Last Train.exe")
+        if (getattr(sys, "frozen", False) and Path(process.exe()).resolve() != executable
+                or not getattr(sys, "frozen", False) and str(executable) not in command
+                or state["instance"] not in command or "_serve" not in command):
             return None
         return process
     except (psutil.Error, KeyError, ValueError):
@@ -122,13 +128,14 @@ def ready(state):
         opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
         with opener.open(f'http://127.0.0.1:{state["port"]}/api/health/', timeout=1) as response:
             return json.load(response).get("instance") == state["instance"]
-    except (OSError, ValueError):
+    except (OSError, ValueError, http.client.HTTPException):
         return False
 
 
 def start(no_browser=False):
     state = read_state()
-    if state and owned_process(state):
+    existing = bool(state and owned_process(state))
+    if existing:
         if not ready(state):
             raise RuntimeError("Owned server exists but is not ready. Inspect data/server.log or run stop.bat.")
     else:
@@ -147,8 +154,10 @@ def start(no_browser=False):
         if port is None:
             raise RuntimeError("No free local port. Set LASTTRAIN_PORT to another port.")
         token = uuid.uuid4().hex
+        command = ([sys.executable] if getattr(sys, "frozen", False)
+                   else [sys.executable, str(Path(__file__).resolve())])
         with (DATA / "server.log").open("a", encoding="utf-8") as log:
-            process = subprocess.Popen([sys.executable, str(Path(__file__).resolve()), "_serve", "--port", str(port), "--instance", token],
+            process = subprocess.Popen([*command, "_serve", "--port", str(port), "--instance", token],
                 cwd=ROOT, stdin=subprocess.DEVNULL, stdout=log, stderr=log,
                 creationflags=subprocess.CREATE_NO_WINDOW)
         import psutil
@@ -162,17 +171,21 @@ def start(no_browser=False):
     url = f'http://127.0.0.1:{state["port"]}/'
     print("Last Train ready:", url)
     print("Data:", DATA)
-    if not no_browser:
+    if not no_browser and (not existing or not os.environ.get("LASTTRAIN_PORTABLE")):
         if not webbrowser.open(url):
             print("Browser did not open automatically. Open the URL above manually.")
+    return url
 
 
 def stop():
     state = read_state()
     process = owned_process(state) if state else None
     if process:
-        process.terminate()
-        process.wait(timeout=15)
+        if getattr(sys, "frozen", False):
+            (DATA / "stop.request").write_text(state["instance"], encoding="ascii")
+        else:
+            process.terminate()
+        process.wait(timeout=25)
         print("Stopped the owned Last Train server.")
     else:
         print("No owned Last Train server running; stale state ignored.")
@@ -191,8 +204,28 @@ def main():
         with lock("server.lock"):
             os.environ["LASTTRAIN_INSTANCE"] = args.instance
             from config.wsgi import application
-            from waitress import serve
-            serve(application, host="127.0.0.1", port=args.port, threads=4, max_request_body_size=101*1024*1024)
+            if getattr(sys, "frozen", False):
+                from waitress import create_server
+                from threading import Thread
+                server = create_server(application, host="127.0.0.1", port=args.port,
+                                       threads=4, max_request_body_size=101*1024*1024)
+                worker = Thread(target=server.run, daemon=True)
+                worker.start()
+                request = DATA / "stop.request"
+                try:
+                    while worker.is_alive():
+                        if request.is_file() and request.read_text(encoding="ascii") == args.instance:
+                            break
+                        time.sleep(.2)
+                finally:
+                    server.close()
+                    server.task_dispatcher.shutdown()
+                    worker.join(timeout=10)
+                    request.unlink(missing_ok=True)
+            else:
+                from waitress import serve
+                serve(application, host="127.0.0.1", port=args.port, threads=4,
+                      max_request_body_size=101*1024*1024)
         return
     with lock("launcher.lock"):
         if args.command == "start":
