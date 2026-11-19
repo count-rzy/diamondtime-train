@@ -108,11 +108,11 @@ describe('critical frontend flows', () => {
       }
     }
     vi.stubGlobal('AudioContext', FakeAudioContext)
-    render(<MusicPlayer />)
+    render(<MusicPlayer open onClose={() => {}} />)
     fireEvent.click(screen.getByRole('button', { name: 'Play music' }))
     expect(await screen.findByRole('button', { name: 'Pause music' })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Next track' }))
-    expect(await screen.findByText('Night Carriage')).toBeInTheDocument()
+    expect(await screen.findByTitle('Night Carriage')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Pause music' }))
     expect(screen.getByRole('button', { name: 'Play music' })).toBeInTheDocument()
   })

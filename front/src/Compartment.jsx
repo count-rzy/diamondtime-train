@@ -29,6 +29,9 @@ export default function Compartment({
   onAction,
   preview = false,
   onOpenNotebook,
+  onOpenAtlas,
+  onOpenRadio,
+  radioPlaying = false,
   immersive = false,
   onEnterImmersive,
   onExitImmersive,
@@ -367,12 +370,32 @@ export default function Compartment({
             <small>{preview ? t('ui.collect_the_moments') : t('ui.view_statistics')}</small>
           </Link>
           {!preview && (
-            <Link className="atlas-object" to="/atlas" aria-label={t('rail.open_atlas')}>
+            <button
+              type="button"
+              className="atlas-object"
+              onClick={onOpenAtlas}
+              aria-label={t('rail.open_atlas')}
+            >
               <MapPinned size={16} />
               {t('rail.atlas')}
-            </Link>
+            </button>
           )}
         </div>
+        {!preview && (
+          <button
+            type="button"
+            className="table-radio"
+            onClick={onOpenRadio}
+            aria-label={t('ui.expand_music_player')}
+          >
+            <span className="radio-handle" aria-hidden="true" />
+            <span className="radio-face" aria-hidden="true">
+              <span className="radio-speaker" />
+              <span className="radio-display">{radioPlaying ? '▶ ON AIR' : '◆ RADIO'}</span>
+              <span className="radio-dial" />
+            </span>
+          </button>
+        )}
       </div>
       {!preview && (
         <Link className="cabin-new" to="/journeys/new">

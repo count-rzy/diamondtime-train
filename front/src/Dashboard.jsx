@@ -5,6 +5,9 @@ import { progressFromRemaining, remainingFromSnapshot } from './journey'
 import Compartment from './Compartment'
 import { Link } from 'react-router-dom'
 import Notebook from './Notebook'
+import Atlas from './Atlas'
+import OverlayFrame from './OverlayFrame'
+import { useCompartmentOverlays } from './CompartmentOverlays'
 import { deriveWorld } from './world'
 
 export default function Dashboard() {
@@ -30,7 +33,7 @@ export default function Dashboard() {
   const nativeFullscreen = useRef(false)
   const [immersive, setImmersive] = useState(false)
   const [controlsVisible, setControlsVisible] = useState(false)
-  const [notebookOpen, setNotebookOpen] = useState(false)
+  const { activeOverlay, setActiveOverlay, radioPlaying } = useCompartmentOverlays()
 
   useEffect(() => {
     document.body.classList.toggle('journey-immersive', immersive)
@@ -46,17 +49,17 @@ export default function Dashboard() {
     }
     document.addEventListener('fullscreenchange', fullscreenChanged)
     return () => document.removeEventListener('fullscreenchange', fullscreenChanged)
-  }, [notebookOpen])
+  }, [])
 
   useEffect(() => {
     const onKey = (event) => {
-      if (event.key !== 'Escape' || notebookOpen || !immersive) return
+      if (event.key !== 'Escape' || activeOverlay || !immersive) return
       event.preventDefault()
       exitImmersive()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [immersive, notebookOpen])
+  }, [immersive, activeOverlay])
 
   useEffect(() => () => clearTimeout(controlsTimer.current), [])
 
@@ -208,12 +211,31 @@ export default function Dashboard() {
         busy={busy}
         error={error}
         onAction={onAction}
-        onOpenNotebook={() => setNotebookOpen(true)}
+        onOpenNotebook={() => setActiveOverlay('diary')}
+        onOpenAtlas={() => setActiveOverlay('atlas')}
+        onOpenRadio={() => setActiveOverlay('radio')}
+        radioPlaying={radioPlaying}
         immersive={immersive}
         onEnterImmersive={enterImmersive}
         onExitImmersive={exitImmersive}
       />
-      {notebookOpen && <Notebook journey={journey} onClose={() => setNotebookOpen(false)} />}
+      {activeOverlay === 'diary' && (
+        <Notebook journey={journey} onClose={() => setActiveOverlay(null)} />
+      )}
+      {activeOverlay === 'atlas' && (
+        <OverlayFrame
+          title={t('rail.atlas')}
+          kind="atlas-overlay"
+          onClose={() => setActiveOverlay(null)}
+        >
+          <Atlas
+            embedded
+            journeySnapshot={journey}
+            settingsSnapshot={settings}
+            worldSnapshot={world}
+          />
+        </OverlayFrame>
+      )}
     </div>
   )
 }

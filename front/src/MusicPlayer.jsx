@@ -1,8 +1,6 @@
 import { t, useLanguage, translateMessage } from './i18n'
 import { useEffect, useRef, useState } from 'react'
 import {
-  ChevronDown,
-  ChevronUp,
   ListMusic,
   Music2,
   Pause,
@@ -15,6 +13,7 @@ import {
   VolumeX,
 } from 'lucide-react'
 import { api } from './api'
+import OverlayFrame from './OverlayFrame'
 
 const ambient = () => [
   {
@@ -37,10 +36,9 @@ const ambient = () => [
   },
 ]
 
-export default function MusicPlayer({ inWorld = false }) {
+export default function MusicPlayer({ open = false, onClose, onPlaybackChange }) {
   useLanguage()
 
-  const [expanded, setExpanded] = useState(false)
   const [playlist, setPlaylist] = useState('ambient')
   const [files, setFiles] = useState([])
   const [index, setIndex] = useState(0)
@@ -58,6 +56,7 @@ export default function MusicPlayer({ inWorld = false }) {
   const tracks = playlist === 'ambient' ? ambient() : files
   const track = tracks[index]
   const duration = track?.duration || 0
+  useEffect(() => onPlaybackChange?.(playing), [playing, onPlaybackChange])
 
   function stop() {
     startGeneration.current += 1
@@ -325,103 +324,89 @@ export default function MusicPlayer({ inWorld = false }) {
       window.removeEventListener('lasttrain:settings-updated', updated)
     }
   }, [])
-  return (
-    <div
-      data-caption={t('audio.radio')}
-      className={`music-player ${expanded ? 'expanded' : ''} ${inWorld ? 'in-world' : ''}`}
-    >
-      <div className="player-main">
-        <button
-          className="album-art"
-          aria-label={t('ui.expand_music_player')}
-          onClick={() => setExpanded(!expanded)}
-        >
-          <Music2 size={22} />
-        </button>
-        <div className="track-info">
-          <strong title={track?.title}>{track?.title || t('ui.add_local_audio')}</strong>
-          <small>
-            {starting
-              ? t('ui.loading_audio')
-              : (track?.url ? t('ui.your_local_library') : track?.artist) ||
-                t('ui.your_local_library')}
-          </small>
-          {error && <small role="alert">{translateMessage(error)}</small>}
-        </div>
-        <div className="player-controls">
-          <button
-            className="icon-button"
-            aria-label={t('ui.previous_track')}
-            onClick={() => advance(-1)}
-            disabled={!track || starting}
-          >
-            <SkipBack size={17} />
+  return open ? (
+    <OverlayFrame title={t('audio.radio')} kind="radio-overlay" onClose={onClose}>
+      <div data-caption={t('audio.radio')} className="music-player radio-panel">
+        <div className="player-main">
+          <button className="album-art" aria-label={t('ui.expand_music_player')} onClick={onClose}>
+            <Music2 size={22} />
           </button>
-          <button
-            className="play-button"
-            aria-label={playing ? t('ui.pause_music') : t('ui.play_music')}
-            onClick={() => (playing ? pause() : start())}
-            disabled={!track || starting}
-          >
-            {playing ? (
-              <Pause size={18} fill="currentColor" />
-            ) : (
-              <Play size={18} fill="currentColor" />
-            )}
-          </button>
-          <button
-            className="icon-button"
-            aria-label={t('ui.next_track')}
-            onClick={() => advance(1)}
-            disabled={!track || starting}
-          >
-            <SkipForward size={17} />
-          </button>
+          <div className="track-info">
+            <strong title={track?.title}>{track?.title || t('ui.add_local_audio')}</strong>
+            <small>
+              {starting
+                ? t('ui.loading_audio')
+                : (track?.url ? t('ui.your_local_library') : track?.artist) ||
+                  t('ui.your_local_library')}
+            </small>
+            {error && <small role="alert">{translateMessage(error)}</small>}
+          </div>
+          <div className="player-controls">
+            <button
+              className="icon-button"
+              aria-label={t('ui.previous_track')}
+              onClick={() => advance(-1)}
+              disabled={!track || starting}
+            >
+              <SkipBack size={17} />
+            </button>
+            <button
+              className="play-button"
+              aria-label={playing ? t('ui.pause_music') : t('ui.play_music')}
+              onClick={() => (playing ? pause() : start())}
+              disabled={!track || starting}
+            >
+              {playing ? (
+                <Pause size={18} fill="currentColor" />
+              ) : (
+                <Play size={18} fill="currentColor" />
+              )}
+            </button>
+            <button
+              className="icon-button"
+              aria-label={t('ui.next_track')}
+              onClick={() => advance(1)}
+              disabled={!track || starting}
+            >
+              <SkipForward size={17} />
+            </button>
+          </div>
+          <div className="player-progress">
+            <span>{display(currentTime)}</span>
+            <input
+              aria-label={t('ui.playback_position')}
+              type="range"
+              min="0"
+              max={Math.max(1, knownDuration)}
+              value={Math.min(position, knownDuration || 1)}
+              onChange={(event) => {
+                const at = Number(event.target.value)
+                setPosition(at)
+                if (playing) start(at)
+              }}
+            />
+            <span>{display(knownDuration)}</span>
+          </div>
+          <div className="player-volume">
+            <button
+              className="icon-button"
+              aria-label={muted ? t('ui.unmute') : t('ui.mute')}
+              onClick={toggleMute}
+            >
+              {muted ? <VolumeX size={17} /> : <Volume2 size={17} />}
+            </button>
+            <input
+              type="range"
+              aria-label={t('ui.music_volume')}
+              min="0"
+              max="100"
+              value={volume}
+              onChange={(event) => setVolume(Number(event.target.value))}
+              onPointerUp={persistVolume}
+              onKeyUp={persistVolume}
+            />
+          </div>
         </div>
-        <div className="player-progress">
-          <span>{display(currentTime)}</span>
-          <input
-            aria-label={t('ui.playback_position')}
-            type="range"
-            min="0"
-            max={Math.max(1, knownDuration)}
-            value={Math.min(position, knownDuration || 1)}
-            onChange={(event) => {
-              const at = Number(event.target.value)
-              setPosition(at)
-              if (playing) start(at)
-            }}
-          />
-          <span>{display(knownDuration)}</span>
-        </div>
-        <div className="player-volume">
-          <button
-            className="icon-button"
-            aria-label={muted ? t('ui.unmute') : t('ui.mute')}
-            onClick={toggleMute}
-          >
-            {muted ? <VolumeX size={17} /> : <Volume2 size={17} />}
-          </button>
-          <input
-            type="range"
-            aria-label={t('ui.music_volume')}
-            min="0"
-            max="100"
-            value={volume}
-            onChange={(event) => setVolume(Number(event.target.value))}
-            onPointerUp={persistVolume}
-            onKeyUp={persistVolume}
-          />
-        </div>
-        <button
-          className="icon-button expand-button"
-          aria-label={expanded ? t('ui.collapse_music_player') : t('ui.expand_music_player')}
-          onClick={() => setExpanded(!expanded)}
-        >
-          {expanded ? <ChevronDown size={19} /> : <ChevronUp size={19} />}
-        </button>
-      </div>
-      {expanded && (
         <div className="player-extra">
           <div className="expanded-audio-controls">
             <label>
@@ -512,7 +497,7 @@ export default function MusicPlayer({ inWorld = false }) {
             )}
           </div>
         </div>
-      )}
-    </div>
-  )
+      </div>
+    </OverlayFrame>
+  ) : null
 }

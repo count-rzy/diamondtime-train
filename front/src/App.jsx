@@ -28,6 +28,7 @@ import Dashboard from './Dashboard'
 import Atlas from './Atlas'
 import { DiaryPage, StatisticsPage, SettingsPage } from './OtherPages'
 import MusicPlayer from './MusicPlayer'
+import { CompartmentOverlayContext } from './CompartmentOverlays'
 import Scene from './Scene'
 import { TrainAudioProvider, TrainSoundStatus } from './TrainAudio'
 
@@ -48,82 +49,91 @@ function Shell() {
   const location = useLocation()
   const immersive = location.pathname === '/dashboard'
   const [menuOpen, setMenuOpen] = useState(false)
+  const [activeOverlay, setActiveOverlay] = useState(null)
+  const [radioPlaying, setRadioPlaying] = useState(false)
+  useEffect(() => setActiveOverlay(null), [location.pathname])
   return (
-    <div className={`app-shell ${immersive ? 'immersive-shell' : ''}`}>
-      <aside className={`sidebar ${menuOpen ? 'open' : ''}`}>
-        <div className="sidebar-top">
-          <Link to="/dashboard" className="brand" onClick={() => setMenuOpen(false)}>
-            ✦ LAST TRAIN
-          </Link>
-          <button
-            className="icon-button close-menu"
-            aria-label={t('ui.close_menu')}
-            onClick={() => setMenuOpen(false)}
-          >
-            <X size={20} />
-          </button>
-        </div>
-        <div className="sidebar-scroll" tabIndex={0}>
-          <div className="sidebar-caption">{t('ui.the_journey')}</div>
-          <nav aria-label={t('ui.main_navigation')}>
-            {links().map(({ to, icon: Icon, text }) => (
-              <NavLink
-                key={to}
-                to={to}
-                end={to === '/dashboard'}
-                onClick={() => setMenuOpen(false)}
-                className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
-              >
-                <Icon size={18} strokeWidth={1.8} />
-                {text}
-              </NavLink>
-            ))}
-          </nav>
-          <div className="sidebar-bottom">
-            <TrainSoundStatus />
-            <div className="rail-note">
-              <TrainFront size={22} />
-              <span>
-                {t('ui.one_quiet_mile')} <br />
-                {t('ui.at_a_time')}{' '}
-              </span>
-            </div>
-            <div className="user-chip">
-              <div className="avatar">{user?.username?.[0]?.toUpperCase()}</div>
-              <div>
-                <strong>{user?.first_name || user?.username}</strong>
-                <small>{t('ui.traveler')}</small>
+    <CompartmentOverlayContext.Provider value={{ activeOverlay, setActiveOverlay, radioPlaying }}>
+      <div className={`app-shell ${immersive ? 'immersive-shell' : ''}`}>
+        <aside className={`sidebar ${menuOpen ? 'open' : ''}`}>
+          <div className="sidebar-top">
+            <Link to="/dashboard" className="brand" onClick={() => setMenuOpen(false)}>
+              ✦ LAST TRAIN
+            </Link>
+            <button
+              className="icon-button close-menu"
+              aria-label={t('ui.close_menu')}
+              onClick={() => setMenuOpen(false)}
+            >
+              <X size={20} />
+            </button>
+          </div>
+          <div className="sidebar-scroll" tabIndex={0}>
+            <div className="sidebar-caption">{t('ui.the_journey')}</div>
+            <nav aria-label={t('ui.main_navigation')}>
+              {links().map(({ to, icon: Icon, text }) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  end={to === '/dashboard'}
+                  onClick={() => setMenuOpen(false)}
+                  className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
+                >
+                  <Icon size={18} strokeWidth={1.8} />
+                  {text}
+                </NavLink>
+              ))}
+            </nav>
+            <div className="sidebar-bottom">
+              <TrainSoundStatus />
+              <div className="rail-note">
+                <TrainFront size={22} />
+                <span>
+                  {t('ui.one_quiet_mile')} <br />
+                  {t('ui.at_a_time')}{' '}
+                </span>
+              </div>
+              <div className="user-chip">
+                <div className="avatar">{user?.username?.[0]?.toUpperCase()}</div>
+                <div>
+                  <strong>{user?.first_name || user?.username}</strong>
+                  <small>{t('ui.traveler')}</small>
+                </div>
               </div>
             </div>
           </div>
+        </aside>
+        <div className="shell-main">
+          <header className="mobile-header">
+            <button
+              className="icon-button"
+              aria-label={t('ui.open_menu')}
+              onClick={() => setMenuOpen(true)}
+            >
+              <Menu size={22} />
+            </button>
+            <Link to="/dashboard" className="brand">
+              ✦ LAST TRAIN
+            </Link>
+          </header>
+          <main className={`content ${immersive ? 'immersive-content' : ''}`}>
+            <Outlet />
+          </main>
+          <MusicPlayer
+            open={activeOverlay === 'radio'}
+            onClose={() => setActiveOverlay(null)}
+            onPlaybackChange={setRadioPlaying}
+          />
         </div>
-      </aside>
-      <div className="shell-main">
-        <header className="mobile-header">
+        {menuOpen && (
           <button
-            className="icon-button"
-            aria-label={t('ui.open_menu')}
-            onClick={() => setMenuOpen(true)}
-          >
-            <Menu size={22} />
-          </button>
-          <Link to="/dashboard" className="brand">
-            ✦ LAST TRAIN
-          </Link>
-        </header>
-        <main className={`content ${immersive ? 'immersive-content' : ''}`}>
-          <Outlet />
-        </main>
-        <MusicPlayer inWorld={immersive} />
+            aria-label={t('ui.close_menu')}
+            className="menu-scrim"
+            onClick={() => setMenuOpen(false)}
+          />
+        )}
       </div>
-      {menuOpen && (
-        <button
-          aria-label={t('ui.close_menu')}
-          className="menu-scrim"
-          onClick={() => setMenuOpen(false)}
-        />
-      )}
-    </div>
+    </CompartmentOverlayContext.Provider>
   )
 }
 

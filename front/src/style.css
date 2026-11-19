@@ -3565,6 +3565,209 @@ button.notebook-object {
   background: #101b2b;
   color: #e9d9ba;
 }
+.atlas-page.atlas-embedded {
+  min-height: 0;
+  min-width: 0;
+  width: 100%;
+  padding: clamp(12px, 2vw, 24px);
+  background: transparent;
+}
+
+.object-overlay-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 110;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: #07111bd4;
+}
+.object-overlay-dialog {
+  display: flex;
+  flex-direction: column;
+  width: min(1050px, 100%);
+  max-height: calc(100dvh - 32px);
+  min-height: 0;
+  min-width: 0;
+  border: 4px solid #aa805c;
+  background: #172638;
+  box-shadow: 10px 12px 0 #070d18a8;
+  animation: notebook-open 0.2s ease-out;
+}
+.object-overlay-toolbar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 52px;
+  padding: 4px 8px 4px 16px;
+  background: #493a3b;
+  color: #f3dfb9;
+  font:
+    9px 'Press Start 2P',
+    monospace;
+}
+.object-overlay-toolbar button {
+  min-width: 44px;
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.object-overlay-scroll {
+  min-height: 0;
+  min-width: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.radio-overlay {
+  width: min(680px, 100%);
+}
+.radio-panel {
+  position: static;
+  border: 0;
+  background: #273444 url('/art/panel-texture.png') repeat;
+  box-shadow: none;
+  color: #f3dfb9;
+}
+.radio-panel .player-main {
+  height: auto;
+  min-height: 80px;
+  flex-wrap: wrap;
+}
+.radio-panel .player-progress {
+  min-width: 160px;
+}
+.radio-panel .player-extra {
+  max-height: none;
+}
+
+.table-radio {
+  position: relative;
+  align-self: flex-end;
+  flex: none;
+  width: 144px;
+  height: 80px;
+  margin: 24px auto 0;
+  padding: 12px 7px 6px;
+  border: 4px solid #a4774d;
+  background: #3d2926 url('/art/panel-texture.png') repeat;
+  box-shadow:
+    5px 6px 0 #0c1220a8,
+    inset 0 0 0 2px #251c20;
+  image-rendering: pixelated;
+  cursor: pointer;
+  transform: rotate(-2deg);
+}
+.table-radio:hover,
+.table-radio:focus-visible {
+  transform: translateY(-3px) rotate(0);
+  outline: 2px solid #f4d49d;
+}
+.radio-handle {
+  position: absolute;
+  left: 21%;
+  right: 21%;
+  top: -13px;
+  height: 10px;
+  border: 4px solid #b68b61;
+  border-bottom: 0;
+}
+.radio-face {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 100%;
+}
+.radio-speaker {
+  width: 40%;
+  height: 41px;
+  border: 3px solid #ad855c;
+  background: repeating-linear-gradient(90deg, #231d20 0 3px, #71523c 3px 5px);
+}
+.radio-display {
+  flex: 1;
+  padding: 6px 2px;
+  border: 2px solid #b58a5d;
+  background: #162728;
+  color: #f3c677;
+  font:
+    6px 'Press Start 2P',
+    monospace;
+  white-space: nowrap;
+  text-shadow: 0 0 5px #e7b567;
+}
+.radio-dial {
+  width: 11px;
+  height: 11px;
+  border: 2px solid #d5a866;
+  border-radius: 50%;
+}
+
+@media (min-width: 801px) {
+  .cabin-objects {
+    display: flex;
+    position: absolute;
+    left: 4%;
+    right: 4%;
+    bottom: 7%;
+    z-index: 6;
+    align-items: flex-end;
+    gap: 18px;
+  }
+  .cabin-objects .notebook-object {
+    position: relative;
+    left: auto;
+    bottom: auto;
+    flex: none;
+  }
+  .cabin-objects-right {
+    position: relative;
+    right: auto;
+    bottom: auto;
+    flex: none;
+    margin-left: auto;
+  }
+  .table-radio {
+    margin: 0 0 0 clamp(12px, 4vw, 80px);
+  }
+  .journey-immersive .cabin-objects-right {
+    bottom: auto;
+  }
+}
+@media (max-width: 800px) {
+  .cabin-objects {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    margin-bottom: 40px;
+  }
+  .table-radio {
+    order: 3;
+    margin: 12px auto 0;
+  }
+  .radio-panel .player-main {
+    padding: 12px;
+  }
+  .radio-panel .player-progress,
+  .radio-panel .player-volume {
+    display: flex;
+  }
+  .object-overlay-backdrop {
+    padding: 6px;
+  }
+  .object-overlay-dialog {
+    max-height: calc(100dvh - 12px);
+  }
+  .atlas-page.atlas-embedded {
+    padding: 12px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .object-overlay-dialog {
+    animation: none;
+  }
+}
 .atlas-heading {
   display: flex;
   align-items: start;

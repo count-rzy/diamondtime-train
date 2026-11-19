@@ -6,7 +6,7 @@ import { formatNumber, t, useLanguage } from './i18n'
 import { deriveWorld, pointOnTrack } from './world'
 import { atlasTrack, drawAtlasMap } from './atlas-map'
 
-export default function Atlas() {
+export default function Atlas({ embedded = false, journeySnapshot, worldSnapshot }) {
   useLanguage()
   const [params] = useSearchParams()
   const journeyId = params.get('journey')
@@ -14,17 +14,16 @@ export default function Atlas() {
   const [settings, setSettings] = useState({ atmospheric_events: true })
   const [fetchedAt, setFetchedAt] = useState(performance.now())
   const [now, setNow] = useState(performance.now())
-  const [selectedIndex, setSelectedIndex] = useState(null)
-  const [selectedPoint, setSelectedPoint] = useState(null)
   const [error, setError] = useState('')
-  const canvas = useRef(null)
 
   useEffect(() => {
+    if (embedded) return
     window.scrollTo(0, 0)
     document.querySelector('.shell-main')?.scrollTo(0, 0)
-  }, [])
+  }, [embedded])
 
   useEffect(() => {
+    if (embedded) return
     let active = true
     async function load() {
       try {
@@ -57,12 +56,21 @@ export default function Atlas() {
       clearInterval(refresh)
       clearInterval(tick)
     }
-  }, [journeyId])
+  }, [journeyId, embedded])
 
   const world = useMemo(
     () => deriveWorld(journey, (now - fetchedAt) / 1000, settings.atmospheric_events !== false),
     [journey, now, fetchedAt, settings.atmospheric_events],
   )
+  if (embedded) return <AtlasView journey={journeySnapshot} world={worldSnapshot} embedded />
+  return <AtlasView journey={journey} world={world} error={error} />
+}
+
+function AtlasView({ journey, world, error = '', embedded = false }) {
+  useLanguage()
+  const [selectedIndex, setSelectedIndex] = useState(null)
+  const [selectedPoint, setSelectedPoint] = useState(null)
+  const canvas = useRef(null)
   const currentIndex = world?.region?.index || 0
   const index = Math.max(0, Math.min(selectedIndex ?? currentIndex, (world?.route.length || 1) - 1))
   const region = world?.route[index]
@@ -100,18 +108,20 @@ export default function Atlas() {
   }
 
   return (
-    <div className="atlas-page">
-      <header className="atlas-heading">
-        <div>
-          <span className="eyebrow">{t('rail.railway')}</span>
-          <h1>{t('rail.atlas')}</h1>
-          <p>{t('rail.atlas_intro')}</p>
-        </div>
-        <Link className="button secondary" to="/dashboard">
-          <ArrowLeft size={16} />
-          {t('rail.return_carriage')}
-        </Link>
-      </header>
+    <div className={`atlas-page ${embedded ? 'atlas-embedded' : ''}`}>
+      {!embedded && (
+        <header className="atlas-heading">
+          <div>
+            <span className="eyebrow">{t('rail.railway')}</span>
+            <h1>{t('rail.atlas')}</h1>
+            <p>{t('rail.atlas_intro')}</p>
+          </div>
+          <Link className="button secondary" to="/dashboard">
+            <ArrowLeft size={16} />
+            {t('rail.return_carriage')}
+          </Link>
+        </header>
+      )}
       {error && (
         <p role="alert" className="error-box">
           {error}
