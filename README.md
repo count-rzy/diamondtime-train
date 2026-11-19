@@ -1,5 +1,17 @@
 # Last Train — Local Edition
 
+## Windows portable edition (v0.3)
+
+For use without installing Python or Node.js, download
+`LastTrain-v0.3.0-Windows-x64.zip`, extract it, and double-click
+**Start Last Train.exe**. Use **Stop Last Train.exe** to stop the local server.
+The portable edition stores data in `%LOCALAPPDATA%\LastTrain\data`, so replacing
+the program folder preserves journeys and notes. See the included `README.txt`
+for migration from an older source installation and
+[portable build instructions](docs/PORTABLE-WINDOWS.md).
+
+The requirements and `setup.bat` instructions below apply to the source edition.
+
 Last Train is a quiet pixel-art carriage for focused journeys, diary notes and offline music. The landscape changes as your journey progresses. Your trips, notes and preferences stay on your computer.
 
 ## Requirements
@@ -69,7 +81,7 @@ Settings also saves your display name, reduced motion, particles, weather, anima
 3. With ZIP downloads, extract the new version to a different folder. Copy your `data/` folder into it while Last Train is stopped, or use the same external `LASTTRAIN_DATA_DIR`.
 4. Run the new **setup.bat**, then **start.bat**. Keep the old folder until your data is verified.
 
-Do not copy a live SQLite file by itself. Use the backup workflow, or copy the complete data folder only after stopping the app. No executable bundle or GitHub release is published automatically.
+Do not copy a live SQLite file by itself. Use the backup workflow, or copy the complete data folder only after stopping the app. The portable ZIP is a separate build artifact; no GitHub Release is published automatically.
 
 ## Troubleshooting
 
