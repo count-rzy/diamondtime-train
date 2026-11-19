@@ -38,7 +38,7 @@ def lock(name):
         raise OSError(ctypes.get_last_error(), "Cannot create Last Train instance mutex")
     acquired = False
     try:
-        result = kernel.WaitForSingleObject(handle, 5000 if name == "launcher.lock" else 0)
+        result = kernel.WaitForSingleObject(handle, 120000 if name == "launcher.lock" else 0)
         if result not in (0, 0x80):
             raise RuntimeError("Last Train is running or maintenance is in progress. Close the other instance first.")
         acquired = True
@@ -84,6 +84,17 @@ def django_ready():
     django.setup()
 
 
+def check_migration_compatibility():
+    from django.db import connection, connections
+    from django.db.migrations.loader import MigrationLoader
+    try:
+        loader = MigrationLoader(connection)
+        if any(tuple(row) not in loader.disk_migrations for row in loader.applied_migrations):
+            raise RuntimeError("Database was created by a newer Last Train version. Update the application; the data was not changed.")
+    finally:
+        connections.close_all()
+
+
 def initialize():
     from local_data import create_backup, integrity, snapshot
     target = DATA / "lasttrain.sqlite3"
@@ -97,6 +108,8 @@ def initialize():
         integrity(target)
         print("Pre-migration backup:", create_backup(DATA))
     django_ready()
+    # Django can otherwise ignore migration rows belonging to a newer build.
+    check_migration_compatibility()
     from django.core.management import call_command
     call_command("migrate", interactive=False)
     from journeys.local import local_context
@@ -106,6 +119,8 @@ def initialize():
     if get_user_model().objects.count() > 1:
         print("Multiple legacy profiles preserved. Choose their records in Settings > Stored profiles.")
     integrity(target)
+    from django.db import connections
+    connections.close_all()
     (DATA / "user-files").mkdir(exist_ok=True)
 
 
@@ -127,12 +142,17 @@ def validate():
         if not asset.is_relative_to(dist.resolve()) or not asset.is_file():
             raise RuntimeError("A referenced frontend bundle is missing. Run setup.bat.")
     django_ready()
+    check_migration_compatibility()
     from django.core.management import call_command
     call_command("check", verbosity=0)
-    from django.db import connection
+    from django.db import connection, connections
     from django.db.migrations.executor import MigrationExecutor
-    executor = MigrationExecutor(connection)
-    if executor.migration_plan(executor.loader.graph.leaf_nodes()):
+    try:
+        executor = MigrationExecutor(connection)
+        pending = bool(executor.migration_plan(executor.loader.graph.leaf_nodes()))
+    finally:
+        connections.close_all()
+    if pending:
         raise RuntimeError("Database migrations pending. Run setup.bat.")
 
 
@@ -152,6 +172,49 @@ def owned_process(state):
         return process
     except (psutil.Error, KeyError, ValueError):
         return None
+
+
+def portable_owner(state):
+    """Recognize old packaged builds without requiring their files to exist."""
+    import psutil
+    process = owned_process(state)
+    if not process or not state.get("build"):
+        return None
+    try:
+        executable = Path(state["executable"])
+        if executable.name.lower() != "start last train.exe":
+            return None
+        if Path(process.exe()).name.lower() != executable.name.lower():
+            return None
+        if not all(arg in process.cmdline() for arg in ("_serve", state["instance"])):
+            return None
+        return process
+    except (OSError, KeyError, ValueError, psutil.Error):
+        return None
+
+
+def handoff(state):
+    """Called under launcher.lock, before any database access or migration."""
+    process = portable_owner(state)
+    if not process or not ready(state):
+        raise RuntimeError("Cannot verify the previous portable instance. It was left running; see startup.log.")
+    (DATA / "stop.request").write_text(state["instance"], encoding="ascii")
+    try:
+        process.wait(timeout=25)
+    except Exception as exc:
+        request = DATA / "stop.request"
+        if request.is_file() and request.read_text(encoding="ascii") == state["instance"]:
+            request.unlink(missing_ok=True)
+        raise RuntimeError("The previous Last Train version did not shut down. The new version was not started; try again after closing it normally.") from exc
+    # Process exit alone does not prove the endpoint and ownership mutex are free.
+    with lock("server.lock"):
+        with socket.socket() as probe:
+            try:
+                probe.bind(("127.0.0.1", state["port"]))
+            except OSError as exc:
+                raise RuntimeError("The previous Last Train port is still occupied. The new version was not started.") from exc
+    if read_state() == state:
+        STATE.unlink(missing_ok=True)
 
 
 def read_state():
@@ -264,7 +327,9 @@ def main():
                 finally:
                     server.close()
                     server.task_dispatcher.shutdown()
-                    worker.join(timeout=10)
+                    worker.join()
+                    from django.db import connections
+                    connections.close_all()
                     request.unlink(missing_ok=True)
             else:
                 from waitress import serve

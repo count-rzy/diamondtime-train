@@ -73,7 +73,16 @@ def main():
         init()
         with closing(sqlite3.connect(data / "lasttrain.sqlite3")) as db:
             assert db.execute("SELECT first_name FROM auth_user").fetchone()[0] == "Keep me"
-    print("PASS: batch launch/readiness, port conflict, duplicate launch, doctor, backup, confirmed/cancelled restore, stale PID, idempotent initialization")
+            db.execute("INSERT INTO django_migrations (app, name, applied) VALUES (?, ?, datetime('now'))",
+                       ("journeys", "9999_future_schema"))
+            db.commit()
+        newer = subprocess.run([sys.executable, str(ROOT / "back/launcher.py"), "doctor"],
+                               env=env, text=True, capture_output=True)
+        assert newer.returncode != 0 and "newer Last Train version" in newer.stderr
+        with closing(sqlite3.connect(data / "lasttrain.sqlite3")) as db:
+            db.execute("DELETE FROM django_migrations WHERE name='9999_future_schema'")
+            db.commit()
+    print("PASS: batch launch/readiness, port conflict, duplicate launch, doctor, backup, confirmed/cancelled restore, stale PID, idempotent initialization, future-schema refusal")
 
 
 if __name__ == "__main__":
