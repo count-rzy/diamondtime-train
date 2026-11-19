@@ -91,6 +91,7 @@ export default function Notebook({ journey, onClose }) {
   useEffect(() => {
     const escape = (event) => {
       if (event.key !== 'Escape') return
+      if (document.fullscreenElement) return
       event.preventDefault()
       event.stopImmediatePropagation()
       close()

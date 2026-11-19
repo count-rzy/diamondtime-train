@@ -34,6 +34,8 @@ export default function OverlayFrame({ title, onClose, children, kind = '' }) {
 
   function onKeyDown(event) {
     if (event.key === 'Escape') {
+      // The first Escape exits fullscreen; preserve this dialog and any draft.
+      if (document.fullscreenElement) return
       event.preventDefault()
       event.stopPropagation()
       onClose()

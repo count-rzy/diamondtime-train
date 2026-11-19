@@ -31,7 +31,6 @@ export default function Dashboard() {
   const breakRefresh = useRef(null)
   const sceneRef = useRef(null)
   const controlsTimer = useRef(null)
-  const nativeFullscreen = useRef(false)
   const [immersive, setImmersive] = useState(false)
   const [controlsVisible, setControlsVisible] = useState(false)
   const { activeOverlay, setActiveOverlay, radioPlaying } = useCompartmentOverlays()
@@ -42,25 +41,26 @@ export default function Dashboard() {
   }, [immersive])
 
   useEffect(() => {
-    const fullscreenChanged = () => {
-      if (nativeFullscreen.current && !document.fullscreenElement) {
-        nativeFullscreen.current = false
-        setImmersive(false)
-      }
+    const syncFullscreen = () => {
+      const target = sceneRef.current?.closest('.shell-main')
+      setImmersive(!!target && document.fullscreenElement === target)
     }
-    document.addEventListener('fullscreenchange', fullscreenChanged)
-    return () => document.removeEventListener('fullscreenchange', fullscreenChanged)
+    const exitOnEscape = (event) => {
+      if (event.key !== 'Escape') return
+      const target = sceneRef.current?.closest('.shell-main')
+      if (!target || document.fullscreenElement !== target) return
+      event.stopPropagation()
+      document.exitFullscreen().catch(syncFullscreen)
+    }
+    document.addEventListener('fullscreenchange', syncFullscreen)
+    document.addEventListener('fullscreenerror', syncFullscreen)
+    document.addEventListener('keydown', exitOnEscape)
+    return () => {
+      document.removeEventListener('fullscreenchange', syncFullscreen)
+      document.removeEventListener('fullscreenerror', syncFullscreen)
+      document.removeEventListener('keydown', exitOnEscape)
+    }
   }, [])
-
-  useEffect(() => {
-    const onKey = (event) => {
-      if (event.key !== 'Escape' || activeOverlay || !immersive) return
-      event.preventDefault()
-      exitImmersive()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [immersive, activeOverlay])
 
   useEffect(() => () => clearTimeout(controlsTimer.current), [])
 
@@ -71,20 +71,23 @@ export default function Dashboard() {
   }
 
   async function enterImmersive() {
-    setImmersive(true)
-    showControls()
+    const target = sceneRef.current?.closest('.shell-main')
+    if (!target?.requestFullscreen) return
     try {
-      await sceneRef.current?.closest('.shell-main')?.requestFullscreen?.()
-      nativeFullscreen.current = !!document.fullscreenElement
+      await target.requestFullscreen()
+      setImmersive(document.fullscreenElement === target)
+      if (document.fullscreenElement === target) showControls()
     } catch {
-      nativeFullscreen.current = false
+      setImmersive(false)
     }
   }
 
   function exitImmersive() {
-    nativeFullscreen.current = false
-    setImmersive(false)
-    if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {})
+    if (document.fullscreenElement) {
+      document.exitFullscreen?.().catch(() => {
+        setImmersive(document.fullscreenElement === sceneRef.current?.closest('.shell-main'))
+      })
+    } else setImmersive(false)
   }
 
   const load = useCallback(async () => {
