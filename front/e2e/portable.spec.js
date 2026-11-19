@@ -7,9 +7,24 @@ test('packaged Last Train: journeys, diary, atlas, audio and routes', async ({ p
   await page.addInitScript(() => {
     window.audioContexts = []
     const NativeContext = window.AudioContext
+    const connect = AudioNode.prototype.connect
+    AudioNode.prototype.connect = function (destination, ...args) {
+      return connect.call(
+        this,
+        destination === this.context.destination &&
+          this.context.probe &&
+          this !== this.context.probe
+          ? this.context.probe
+          : destination,
+        ...args,
+      )
+    }
     window.AudioContext = class extends NativeContext {
       constructor(...args) {
         super(...args)
+        this.probe = this.createAnalyser()
+        this.probe.fftSize = 2048
+        this.probe.connect(this.destination)
         window.audioContexts.push(this)
       }
     }
@@ -43,7 +58,9 @@ test('packaged Last Train: journeys, diary, atlas, audio and routes', async ({ p
       page.evaluate(() => window.audioContexts.filter((c) => c.state === 'running').length),
     )
     .toBe(1)
-  await page.getByRole('button', { name: 'Expand music player' }).first().click()
+  await page.locator('.table-radio').click()
+  const radio = page.getByRole('dialog', { name: /radio/i })
+  await expect(radio).toBeVisible()
   await page.getByRole('button', { name: 'Play music' }).click()
   await expect(page.getByRole('button', { name: 'Pause music' })).toBeVisible()
   await expect
@@ -51,9 +68,27 @@ test('packaged Last Train: journeys, diary, atlas, audio and routes', async ({ p
       page.evaluate(() => window.audioContexts.filter((c) => c.state === 'running').length),
     )
     .toBe(2)
-  await page.getByRole('button', { name: 'Collapse music player' }).click()
+  const musicPeak = () =>
+    page.evaluate(() => {
+      const samples = new Float32Array(2048)
+      window.audioContexts[1].probe.getFloatTimeDomainData(samples)
+      return Math.max(...samples.map(Math.abs))
+    })
+  await expect.poll(musicPeak).toBeGreaterThan(0.001)
+  await radio.getByRole('button', { name: /close .*radio/i }).click()
+  await expect(radio).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Expand music player' }).first()).toContainText(
+    'ON AIR',
+  )
+  await expect.poll(musicPeak).toBeGreaterThan(0.001)
   await page.locator('.atlas-object').click()
-  await expect(page.locator('.atlas-frame')).toBeVisible()
+  const atlas = page.getByRole('dialog', { name: 'Atlas' })
+  await expect(atlas).toBeVisible()
+  await expect(atlas.locator('.atlas-frame')).toBeVisible()
+  await expect.poll(musicPeak).toBeGreaterThan(0.001)
+  await atlas.getByRole('button', { name: /Close .*Atlas/ }).click()
+  await expect(atlas).toHaveCount(0)
+  await expect.poll(musicPeak).toBeGreaterThan(0.001)
   await page.goto('/dashboard')
   await page.getByRole('button', { name: 'PAUSE', exact: true }).click()
   await expect(page.getByRole('button', { name: 'RESUME', exact: true })).toBeVisible()

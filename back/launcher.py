@@ -1,6 +1,7 @@
 """One local Waitress server; private data stays outside source files."""
 import argparse
 import contextlib
+import hashlib
 import http.client
 import json
 import os
@@ -22,22 +23,60 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 
 @contextlib.contextmanager
 def lock(name):
-    import msvcrt
-    with (DATA / name).open("a+b") as stream:
-        stream.seek(0)
-        if not stream.read(1):
-            stream.write(b"0")
-            stream.flush()
-        stream.seek(0)
-        try:
-            msvcrt.locking(stream.fileno(), msvcrt.LK_NBLCK, 1)
-        except OSError:
-            raise RuntimeError("Last Train is running or maintenance is in progress. Run stop.bat first.")
-        try:
-            yield
-        finally:
-            stream.seek(0)
-            msvcrt.locking(stream.fileno(), msvcrt.LK_UNLCK, 1)
+    import ctypes
+    from ctypes import wintypes
+    kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel.CreateMutexW.argtypes = (wintypes.LPVOID, wintypes.BOOL, wintypes.LPCWSTR)
+    kernel.CreateMutexW.restype = wintypes.HANDLE
+    kernel.WaitForSingleObject.argtypes = (wintypes.HANDLE, wintypes.DWORD)
+    kernel.WaitForSingleObject.restype = wintypes.DWORD
+    kernel.ReleaseMutex.argtypes = (wintypes.HANDLE,)
+    kernel.CloseHandle.argtypes = (wintypes.HANDLE,)
+    identity = hashlib.sha256(str(DATA).lower().encode("utf-8")).hexdigest()[:24]
+    handle = kernel.CreateMutexW(None, False, f"Local\\LastTrain-{identity}-{name}")
+    if not handle:
+        raise OSError(ctypes.get_last_error(), "Cannot create Last Train instance mutex")
+    acquired = False
+    try:
+        result = kernel.WaitForSingleObject(handle, 5000 if name == "launcher.lock" else 0)
+        if result not in (0, 0x80):
+            raise RuntimeError("Last Train is running or maintenance is in progress. Close the other instance first.")
+        acquired = True
+        yield
+    finally:
+        if acquired:
+            kernel.ReleaseMutex(handle)
+        kernel.CloseHandle(handle)
+
+
+def build_identity():
+    if getattr(sys, "frozen", False):
+        executable = Path(sys.executable).resolve()
+        if executable.name.lower() == "stop last train.exe":
+            executable = executable.with_name("Start Last Train.exe")
+        digest = hashlib.sha256(executable.read_bytes())
+        frontend = ROOT / "front" / "dist"
+        for asset in sorted(path for path in frontend.rglob("*") if path.is_file()):
+            digest.update(asset.relative_to(frontend).as_posix().encode("utf-8"))
+            digest.update(asset.read_bytes())
+        return digest.hexdigest()
+    return "source:" + str(Path(__file__).resolve()).lower()
+
+
+def compatible_state(state):
+    if state.get("build"):
+        return state["build"] == build_identity()
+    # Historical state had no build marker. Only the exact running executable
+    # can be reused or stopped; another extracted version remains incompatible.
+    process = owned_process(state)
+    if not process:
+        return False
+    if getattr(sys, "frozen", False):
+        executable = Path(sys.executable).resolve()
+        if executable.name.lower() == "stop last train.exe":
+            executable = executable.with_name("Start Last Train.exe")
+        return Path(process.exe()).resolve() == executable
+    return str(Path(__file__).resolve()) in process.cmdline()
 
 
 def django_ready():
@@ -78,7 +117,7 @@ def validate():
     dist = ROOT / "front" / "dist"
     if not (dist / "index.html").is_file() or not list((dist / "assets").glob("*.js")):
         raise RuntimeError("Frontend build missing. Run setup.bat.")
-    required_art = "carriage carriage-detail architecture-lights distant-birds firefly-strip foreground-ground glass-rain glass lamp-light mid-pines near-pines panel-texture paper-texture rain-0 rain-1 rain-2 rain-3 valley-afternoon valley-dawn valley-fog valley-morning valley-night valley-sunset valley-twilight water-shimmer window-mask".split()
+    required_art = "carriage carriage-detail architecture-lights distant-birds firefly-strip foreground-ground glass-rain glass lamp-light mid-pines near-pines panel-texture paper-texture rain-0 rain-1 rain-2 rain-3 rail-tunnel-v3 valley-afternoon valley-dawn valley-fog valley-morning valley-night valley-sunset valley-twilight water-shimmer window-mask".split()
     for name in required_art:
         if not (dist / "art" / (name + ".png")).is_file():
             raise RuntimeError(f"Missing artwork: {name}. Run setup.bat.")
@@ -104,11 +143,10 @@ def owned_process(state):
         command = process.cmdline()
         if abs(process.create_time() - state["created"]) > .01:
             return None
-        executable = Path(sys.executable if getattr(sys, "frozen", False) else __file__).resolve()
-        if getattr(sys, "frozen", False) and executable.name.lower() == "stop last train.exe":
-            executable = executable.with_name("Start Last Train.exe")
-        if (getattr(sys, "frozen", False) and Path(process.exe()).resolve() != executable
-                or not getattr(sys, "frozen", False) and str(executable) not in command
+        historical_source = next((arg for arg in command if arg.lower().endswith("launcher.py")), None)
+        executable = Path(state.get("executable") or historical_source or process.exe()).resolve()
+        if ((executable.suffix.lower() == ".py" and str(executable) not in command)
+                or (executable.suffix.lower() != ".py" and Path(process.exe()).resolve() != executable)
                 or state["instance"] not in command or "_serve" not in command):
             return None
         return process
@@ -136,6 +174,8 @@ def start(no_browser=False):
     state = read_state()
     existing = bool(state and owned_process(state))
     if existing:
+        if not compatible_state(state):
+            raise RuntimeError("Another Last Train build is running with this data profile. Close it using its own Stop Last Train.exe before starting this version.")
         if not ready(state):
             raise RuntimeError("Owned server exists but is not ready. Inspect data/server.log or run stop.bat.")
     else:
@@ -161,7 +201,9 @@ def start(no_browser=False):
                 cwd=ROOT, stdin=subprocess.DEVNULL, stdout=log, stderr=log,
                 creationflags=subprocess.CREATE_NO_WINDOW)
         import psutil
-        state = {"pid": process.pid, "created": psutil.Process(process.pid).create_time(), "port": port, "instance": token}
+        state = {"pid": process.pid, "created": psutil.Process(process.pid).create_time(), "port": port, "instance": token,
+                 "executable": str(Path(sys.executable if getattr(sys, "frozen", False) else __file__).resolve()),
+                 "build": build_identity()}
         STATE.write_text(json.dumps(state), encoding="utf-8")
         deadline = time.monotonic() + 30
         while not ready(state):
@@ -180,6 +222,8 @@ def start(no_browser=False):
 def stop():
     state = read_state()
     process = owned_process(state) if state else None
+    if process and not compatible_state(state):
+        raise RuntimeError("This Stop Last Train belongs to a different build. Use the Stop EXE beside the running Start EXE.")
     if process:
         if getattr(sys, "frozen", False):
             (DATA / "stop.request").write_text(state["instance"], encoding="ascii")

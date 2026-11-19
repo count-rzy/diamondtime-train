@@ -3778,6 +3778,187 @@ button.notebook-object {
 .atlas-heading h1 {
   color: #f0ce99;
 }
+
+/* The new departure uses the same scrollable frame as the Atlas. */
+.journey-overlay {
+  width: min(860px, 100%);
+}
+.journey-overlay .object-overlay-scroll {
+  padding: clamp(12px, 2vw, 26px);
+}
+.journey-overlay .page-heading {
+  margin-bottom: 14px;
+}
+.journey-overlay .create-embedded {
+  display: block;
+}
+.journey-overlay .create-form {
+  width: 100%;
+  padding: clamp(16px, 3vw, 30px);
+}
+.journey-overlay .field-row {
+  min-width: 0;
+}
+.journey-overlay .field-row > label {
+  min-width: 0;
+}
+
+/* A paper ticket sits squarely in the table's right-hand object stack. */
+.cabin-objects-right .ticket-object {
+  width: clamp(150px, 15vw, 192px);
+  height: 112px;
+  padding: 13px 14px;
+  border: 2px solid #654735;
+  background: linear-gradient(90deg, #dbc49c 0 72%, #c5a779 72% 74%, #e4cda4 74%);
+  box-shadow:
+    5px 7px 0 #0c1624a8,
+    inset 0 0 0 3px #9e7955;
+  transform: rotate(-2deg);
+  text-decoration: none;
+}
+.cabin-objects-right .ticket-object::after {
+  content: '';
+  position: absolute;
+  top: 7px;
+  bottom: 7px;
+  right: 24%;
+  border-right: 2px dashed #8c6b51;
+}
+.cabin-objects-right .ticket-object strong {
+  margin-top: 12px;
+  font-size: clamp(8px, 0.9vw, 11px);
+  line-height: 1.35;
+}
+.cabin-objects-right .ticket-object:hover,
+.cabin-objects-right .ticket-object:focus-visible {
+  transform: translateY(-4px) rotate(0deg);
+  outline: 2px solid #f5d69f;
+  outline-offset: 3px;
+}
+@media (min-width: 801px) {
+  .cabin-objects {
+    right: 1%;
+    pointer-events: none;
+  }
+  .cabin-objects > *,
+  .cabin-objects-right > * {
+    pointer-events: auto;
+  }
+  .cabin-objects-right {
+    order: 3;
+    margin-left: 0;
+  }
+  .table-radio {
+    order: 2;
+    margin-left: auto;
+    margin-right: clamp(0px, 2vw, 24px);
+  }
+}
+.cabin-new {
+  cursor: pointer;
+}
+.journey-immersive .cabin-new {
+  opacity: 1;
+  pointer-events: auto;
+}
+.journey-immersive .ticket-object {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.rail-scene-enter {
+  animation: rail-scene-in 0.45s ease-out both;
+}
+.rail-scene-exit {
+  animation: rail-scene-out 0.45s ease-out both;
+}
+@keyframes rail-scene-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes rail-scene-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+.pixel-scroll-mid,
+.in-motion .pixel-scroll-mid,
+.slowing .pixel-scroll-mid,
+.motion-gentle .pixel-scroll-mid {
+  animation: pixel-pass-by 76s linear infinite;
+}
+.pixel-scroll-near,
+.in-motion .pixel-scroll-near,
+.slowing .pixel-scroll-near,
+.motion-gentle .pixel-scroll-near {
+  animation: pixel-pass-by 34s linear infinite;
+}
+.pixel-scroll-ground,
+.in-motion .pixel-scroll-ground,
+.slowing .pixel-scroll-ground,
+.motion-gentle .pixel-scroll-ground {
+  animation: pixel-pass-by 17s linear infinite;
+}
+.pixel-scroll,
+.tunnel-passing-lights {
+  animation-play-state: paused;
+}
+.in-motion .pixel-scroll,
+.in-motion .tunnel-passing-lights {
+  animation-play-state: running;
+}
+.tunnel-passing-lights {
+  animation: tunnel-lights-pass 4s linear infinite;
+}
+@keyframes tunnel-lights-pass {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-190px);
+  }
+}
+.at-station .rail-scene-enter,
+.reduced .rail-scene-enter,
+.at-station .rail-scene-exit,
+.reduced .rail-scene-exit {
+  animation-duration: 0.01s;
+}
+@media (max-width: 800px) {
+  .cabin-objects-right .ticket-object {
+    width: min(42vw, 180px);
+  }
+  .cabin-new {
+    display: flex;
+    position: relative;
+    left: auto;
+    bottom: auto;
+    margin: 0 auto 24px;
+  }
+  .journey-overlay .field-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (min-width: 801px) and (max-width: 1400px) {
+  .cabin-new {
+    display: flex;
+    top: 16px;
+    bottom: auto;
+    left: 4%;
+  }
+}
+@media (min-width: 801px) and (max-width: 1100px) {
+  .journey-immersive .cabin-objects {
+    bottom: 3%;
+  }
+}
 .atlas-heading p {
   color: #b8c4c9;
 }

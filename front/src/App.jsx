@@ -76,7 +76,13 @@ function Shell() {
                   key={to}
                   to={to}
                   end={to === '/dashboard'}
-                  onClick={() => setMenuOpen(false)}
+                  onClick={(event) => {
+                    setMenuOpen(false)
+                    if (to === '/journeys/new' && immersive) {
+                      event.preventDefault()
+                      setActiveOverlay('journey')
+                    }
+                  }}
                   className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}
                 >
                   <Icon size={18} strokeWidth={1.8} />

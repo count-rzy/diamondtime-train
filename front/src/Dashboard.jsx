@@ -7,6 +7,7 @@ import { Link } from 'react-router-dom'
 import Notebook from './Notebook'
 import Atlas from './Atlas'
 import OverlayFrame from './OverlayFrame'
+import { CreateJourney } from './JourneyPages'
 import { useCompartmentOverlays } from './CompartmentOverlays'
 import { deriveWorld } from './world'
 
@@ -214,6 +215,7 @@ export default function Dashboard() {
         onOpenNotebook={() => setActiveOverlay('diary')}
         onOpenAtlas={() => setActiveOverlay('atlas')}
         onOpenRadio={() => setActiveOverlay('radio')}
+        onOpenJourney={() => setActiveOverlay('journey')}
         radioPlaying={radioPlaying}
         immersive={immersive}
         onEnterImmersive={enterImmersive}
@@ -233,6 +235,21 @@ export default function Dashboard() {
             journeySnapshot={journey}
             settingsSnapshot={settings}
             worldSnapshot={world}
+          />
+        </OverlayFrame>
+      )}
+      {activeOverlay === 'journey' && (
+        <OverlayFrame
+          title={t('ui.new_journey')}
+          kind="journey-overlay"
+          onClose={() => setActiveOverlay(null)}
+        >
+          <CreateJourney
+            embedded
+            onCreated={async () => {
+              await load()
+              setActiveOverlay(null)
+            }}
           />
         </OverlayFrame>
       )}

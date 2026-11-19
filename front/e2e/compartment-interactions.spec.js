@@ -91,6 +91,7 @@ test('compartment objects, scroll, focus and independent audio', async ({ page, 
       [900, 720],
       [390, 844],
       [360, 800],
+      [360, 500],
     ]) {
       await page.setViewportSize({ width, height })
       const name = `${width}x${height}-${immersive ? 'immersive' : 'regular'}`
@@ -107,14 +108,27 @@ test('compartment objects, scroll, focus and independent audio', async ({ page, 
         )
         return {
           overlap: objects.some((a, i) => objects.some((b, j) => j > i && intersects(a, b))),
+          ticketOnPanel: intersects(objects[1], rect('.cabin-board')),
           documentWidth: document.documentElement.scrollWidth,
           objects,
         }
       })
       fs.writeFileSync(path.join(output, `${name}.json`), JSON.stringify(geometry, null, 2))
       expect(geometry.overlap, name).toBe(false)
+      expect(geometry.ticketOnPanel, name).toBe(false)
       expect(geometry.documentWidth, name).toBeLessThanOrEqual(width + 1)
       await page.screenshot({ path: path.join(output, `${name}.png`), fullPage: true })
+
+      await page.locator('.cabin-new').click()
+      await expect(page.getByRole('dialog', { name: 'New journey' })).toBeVisible()
+      await page.waitForTimeout(250)
+      await page.locator('.journey-overlay .object-overlay-scroll').evaluate((el) => {
+        el.scrollTop = el.scrollHeight
+      })
+      await expect(page.getByRole('button', { name: 'Begin journey' })).toBeInViewport()
+      await page.screenshot({ path: path.join(output, `${name}-journey.png`) })
+      await page.keyboard.press('Escape')
+      await expect(page.getByRole('dialog', { name: 'New journey' })).toHaveCount(0)
 
       await page.locator('.atlas-object').click()
       await expect(page.getByRole('dialog', { name: 'Atlas' })).toBeVisible()
@@ -170,7 +184,15 @@ test('compartment objects, scroll, focus and independent audio', async ({ page, 
         }),
       )
       expect(peaks[0]).toBeGreaterThan(0.001)
-      expect(peaks[1]).toBeGreaterThan(0.001)
+      await expect
+        .poll(() =>
+          page.evaluate(() => {
+            const samples = new Float32Array(2048)
+            window.radioContexts[1].probe.getFloatTimeDomainData(samples)
+            return Math.max(...samples.map(Math.abs))
+          }),
+        )
+        .toBeGreaterThan(0.001)
       await page.locator('.notebook-object').click()
       await expect(page.getByRole('dialog', { name: 'Travel notebook' })).toBeVisible()
       await page.keyboard.press('Escape')
@@ -198,4 +220,48 @@ test('compartment objects, scroll, focus and independent audio', async ({ page, 
   await touchPage.locator('.radio-overlay .object-overlay-toolbar button').tap()
   await touchContext.close()
   expect(errors).toEqual([])
+})
+
+test('immersive journey form validates and creates one journey', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/dashboard')
+  await page.getByRole('button', { name: 'FINISH', exact: true }).click()
+  await expect(page.getByText("You've arrived.")).toBeVisible()
+  const initialCount = await page.evaluate(() =>
+    fetch('/api/journeys/')
+      .then((response) => response.json())
+      .then((data) => data.count),
+  )
+  await page.getByRole('button', { name: 'Enter immersive mode' }).click()
+  await page.locator('.cabin-new').click()
+  const form = page.getByRole('dialog', { name: 'New journey' })
+  await expect(form).toBeVisible()
+  await expect.poll(() => page.evaluate(() => !!document.fullscreenElement)).toBe(true)
+  await form.getByLabel('Journey name').fill('Immersive departure QA')
+  await form.getByLabel('Destination station').fill('Next station')
+  await form.getByLabel('Hours', { exact: true }).fill('0')
+  await form.getByLabel('Minutes', { exact: true }).fill('0')
+  await form.getByRole('button', { name: 'Begin journey' }).click()
+  await expect(form.getByRole('alert')).toBeVisible()
+  await expect(form).toBeVisible()
+  await form.getByLabel('Hours', { exact: true }).fill('1')
+  const creates = []
+  page.on('request', (request) => {
+    if (request.method() === 'POST' && new URL(request.url()).pathname === '/api/journeys/')
+      creates.push(request)
+  })
+  await form.getByRole('button', { name: 'Begin journey' }).click()
+  await expect(form).toHaveCount(0)
+  await expect(page.locator('.cabin-heading')).toContainText('Immersive departure QA')
+  await expect.poll(() => page.evaluate(() => !!document.fullscreenElement)).toBe(true)
+  expect(creates).toHaveLength(1)
+  await expect
+    .poll(() =>
+      page.evaluate(() =>
+        fetch('/api/journeys/')
+          .then((response) => response.json())
+          .then((data) => data.count),
+      ),
+    )
+    .toBe(initialCount + 1)
 })

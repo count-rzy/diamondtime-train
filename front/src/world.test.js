@@ -39,8 +39,10 @@ describe('railway world', () => {
     expect(pointOnTrack(points, 1)).toEqual([100, 300])
     const completed = deriveWorld({ ...journey, status: 'completed', elapsed_seconds: 1200 })
     expect(completed.remainingMeters).toBe(0)
-    expect(completed.regionFraction).toBe(1)
-    expect(completed.totalMeters).toBe(2000)
+    expect(completed.progress).toBe(100)
+    expect(completed.distanceMeters).toBe(2000)
+    expect(completed.totalMeters).toBe(180000)
+    expect(completed.region).toEqual(deriveWorld({ ...journey, elapsed_seconds: 1200 }).region)
   })
 
   it('schedules stable events only during travel', () => {
@@ -48,5 +50,33 @@ describe('railway world', () => {
     expect(deriveWorld(current).event).toBe(deriveWorld(current).event)
     expect(deriveWorld({ ...current, status: 'break' }).event).toBe(null)
     expect(deriveWorld(current, 0, false).event).toBe(null)
+  })
+
+  it.each([1, 2, 15, 1800])(
+    'keeps short and long trip scenery monotonic for %i minutes',
+    (minutes) => {
+      const trip = { ...journey, duration_minutes: minutes }
+      const indices = [0, 0.8, 0.95, 1].map(
+        (part) => deriveWorld(trip, minutes * 60 * part).region.index,
+      )
+      expect(indices).toEqual([...indices].sort((a, b) => a - b))
+      expect(deriveWorld(trip, minutes * 60).region).toEqual(
+        deriveWorld(trip, minutes * 60 + 30).region,
+      )
+      expect(
+        deriveWorld({ ...trip, status: 'completed', elapsed_seconds: minutes * 60 }).arriving,
+      ).toBe(true)
+    },
+  )
+
+  it('holds region and event schedule during pause and station break', () => {
+    const active = deriveWorld({ ...journey, elapsed_seconds: 600 }, 0)
+    for (const status of ['paused', 'break']) {
+      const held = deriveWorld({ ...journey, status, elapsed_seconds: 600 }, 5000)
+      expect(held.region.index).toBe(active.region.index)
+      expect(held.distanceMeters).toBe(active.distanceMeters)
+      expect(held.event).toBeNull()
+      expect(held.moving).toBe(false)
+    }
   })
 })

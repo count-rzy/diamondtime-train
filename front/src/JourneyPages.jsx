@@ -1,20 +1,23 @@
 import { t, useLanguage, formatDate, formatNumber, translateMessage } from './i18n'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ArrowRight, Plus, TrainFront } from 'lucide-react'
 import { api } from './api'
 import Scene from './Scene'
 
-export function CreateJourney() {
+export function CreateJourney({ embedded = false, onCreated }) {
   useLanguage()
 
   const navigate = useNavigate()
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const submitting = useRef(false)
   const [durationMinutes, setDurationMinutes] = useState(60)
   const [plannedBreaks, setPlannedBreaks] = useState([])
   async function submit(event) {
     event.preventDefault()
+    if (submitting.current) return
+    submitting.current = true
     setBusy(true)
     setError('')
     const data = Object.fromEntries(new FormData(event.currentTarget))
@@ -22,6 +25,7 @@ export function CreateJourney() {
     if (duration_minutes < 1 || duration_minutes > 43200) {
       setError(t('ui.choose_a_duration_between_1_minute_and_30_days'))
       setBusy(false)
+      submitting.current = false
       return
     }
     try {
@@ -39,11 +43,13 @@ export function CreateJourney() {
               }))
             : [],
       })
-      navigate('/dashboard')
+      if (onCreated) await onCreated()
+      else navigate('/dashboard')
     } catch (err) {
       setError(err.message)
     } finally {
       setBusy(false)
+      submitting.current = false
     }
   }
   return (
@@ -58,7 +64,7 @@ export function CreateJourney() {
           <p>{t('ui.give_this_stretch_of_time_a_destination_worth_reaching')}</p>
         </div>
       </div>
-      <div className="create-layout">
+      <div className={`create-layout ${embedded ? 'create-embedded' : ''}`}>
         <form className="panel create-form" onSubmit={submit}>
           <span className="eyebrow">{t('ui.your_ticket')}</span>
           <h2>{t('ui.plan_your_journey')}</h2>
@@ -224,18 +230,20 @@ export function CreateJourney() {
             </button>
           </div>
         </form>
-        <div className="create-aside">
-          <Scene progress={0} running={false} title={t('ui.your_new_beginning')} />
-          <div className="panel">
-            <span className="eyebrow">{t('ui.a_note_for_the_road')}</span>
-            <h3>{t('ui.the_best_time_to_begin_is_now')}</h3>
-            <p>
-              {t(
-                'ui.your_clock_starts_when_you_depart_you_can_pause_along_the_way_and_your_notes_will_always_be_here_when_you_return',
-              )}{' '}
-            </p>
+        {!embedded && (
+          <div className="create-aside">
+            <Scene progress={0} running={false} title={t('ui.your_new_beginning')} />
+            <div className="panel">
+              <span className="eyebrow">{t('ui.a_note_for_the_road')}</span>
+              <h3>{t('ui.the_best_time_to_begin_is_now')}</h3>
+              <p>
+                {t(
+                  'ui.your_clock_starts_when_you_depart_you_can_pause_along_the_way_and_your_notes_will_always_be_here_when_you_return',
+                )}{' '}
+              </p>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </>
   )

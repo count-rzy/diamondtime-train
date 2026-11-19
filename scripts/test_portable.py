@@ -130,6 +130,17 @@ def main():
             run_exe(start, env, "--no-browser")
             check(json.loads((data / "server.json").read_text())["pid"] == state["pid"],
                   "repeated launch reuses the server")
+            different = temporary / "different-build" / "LastTrain-Windows-x64"
+            shutil.copytree(app, different)
+            different_html = different / "_internal" / "front" / "dist" / "index.html"
+            different_html.write_bytes(different_html.read_bytes() + b"\n<!-- another build -->\n")
+            for executable in (different / "Start Last Train.exe", different / "Stop Last Train.exe"):
+                attempt = subprocess.run([str(executable), "--no-browser"], cwd=different.parent,
+                                         env=env, capture_output=True, text=True, timeout=120)
+                check(attempt.returncode != 0, f"{executable.name} from another build is refused")
+                check(json.loads((data / "server.json").read_text())["pid"] == state["pid"]
+                      and request(base + "/api/health/")[0] == 200,
+                      "other build leaves the owned server and profile intact")
             if args.browser:
                 browser_env = os.environ.copy()
                 browser_env.pop("LASTTRAIN_VERIFY_RESTART", None)

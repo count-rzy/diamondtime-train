@@ -47,6 +47,6 @@ describe('carriage dashboard', () => {
       </MemoryRouter>,
     )
     expect(screen.getByText("You've arrived.")).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /NEW TRIP/i })).toHaveAttribute('href', '/journeys/new')
+    expect(screen.getByRole('button', { name: /NEW TRIP/i })).toBeInTheDocument()
   })
 })

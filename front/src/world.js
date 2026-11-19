@@ -171,14 +171,15 @@ export function deriveWorld(journey, elapsedSinceFetch = 0, eventsEnabled = true
     Math.min(duration, (journey.elapsed_seconds || 0) + (moving ? elapsedSinceFetch : 0)),
   )
   const distanceMeters = (productiveSeconds * 100) / 60
-  const totalMeters =
-    journey.status === 'completed' ? Math.max(1, distanceMeters) : journey.duration_minutes * 100
+  // Route boundaries never change when the status changes. A completed trip
+  // may have been ended early, but its planned route remains the same route.
+  const totalMeters = Math.max(1, journey.duration_minutes * 100)
   const route = buildRoute(journey, totalMeters)
   const region = route.find((part) => distanceMeters < part.end) || route.at(-1)
   const regionFraction = region ? (distanceMeters - region.start) / (region.end - region.start) : 0
   const progress =
     journey.status === 'completed' ? 100 : duration ? (productiveSeconds / duration) * 100 : 0
-  const arriving = journey.status === 'completed' || progress >= 96
+  const arriving = journey.status === 'completed'
   const slot = Math.floor(distanceMeters / 2400)
   const seed = hashSeed(journey.route_seed || String(journey.id))
   const eventStart = slot * 2400 + 600 + (seed % 900)
@@ -198,7 +199,7 @@ export function deriveWorld(journey, elapsedSinceFetch = 0, eventsEnabled = true
     productiveSeconds,
     distanceMeters,
     totalMeters,
-    remainingMeters: Math.max(0, totalMeters - distanceMeters),
+    remainingMeters: arriving ? 0 : Math.max(0, totalMeters - distanceMeters),
     progress,
     moving,
     arriving,

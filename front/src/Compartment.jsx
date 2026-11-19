@@ -1,6 +1,5 @@
 import { formatDate, formatNumber, t, useLanguage } from './i18n'
 import { Link } from 'react-router-dom'
-import { useEffect, useRef, useState } from 'react'
 import {
   ArrowRight,
   BookOpen,
@@ -31,38 +30,13 @@ export default function Compartment({
   onOpenNotebook,
   onOpenAtlas,
   onOpenRadio,
+  onOpenJourney,
   radioPlaying = false,
   immersive = false,
   onEnterImmersive,
   onExitImmersive,
 }) {
   useLanguage()
-  const [arrivalPhase, setArrivalPhase] = useState('depot')
-  const [stationApproach, setStationApproach] = useState(false)
-  const previousStatus = useRef(journey?.status)
-  useEffect(() => {
-    const previous = previousStatus.current
-    previousStatus.current = journey?.status
-    if (journey?.status === 'break' && previous === 'active' && !settings.reduced_motion) {
-      setStationApproach(true)
-      const stopped = setTimeout(() => setStationApproach(false), 1200)
-      return () => clearTimeout(stopped)
-    }
-    setStationApproach(false)
-    if (journey?.status !== 'completed' || previous === 'completed') return
-    if (!previous || settings.reduced_motion) {
-      setArrivalPhase('depot')
-      return
-    }
-    setArrivalPhase('approach')
-    const tunnel = setTimeout(() => setArrivalPhase('tunnel'), 1700)
-    const depot = setTimeout(() => setArrivalPhase('depot'), 3400)
-    return () => {
-      clearTimeout(tunnel)
-      clearTimeout(depot)
-    }
-  }, [journey?.status, settings.reduced_motion])
-
   const fixed = { dawn: 0, morning: 20, afternoon: 40, sunset: 60, twilight: 80, night: 99 }[
     settings.atmosphere
   ]
@@ -70,35 +44,17 @@ export default function Compartment({
     fixed ?? progress,
     fixed === undefined ? journey?.duration_minutes || 60 : 60,
   )
-  const arrived = journey?.status === 'completed' || progress >= 100
-  const moving =
-    (preview || journey?.status === 'active' || stationApproach) &&
-    !arrived &&
-    !settings.reduced_motion
-  const slowing = (progress >= 92 || stationApproach) && moving
-  const scene =
-    journey?.status === 'break'
-      ? stationApproach
-        ? 'tunnel'
-        : 'depot'
-      : arrived
-        ? arrivalPhase === 'approach'
-          ? 'industry'
-          : arrivalPhase === 'tunnel'
-            ? 'tunnel'
-            : 'depot'
-        : progress >= 96
-          ? 'tunnel'
-          : progress >= 90
-            ? 'industry'
-            : world?.region?.scene || 'valley'
+  const arrived = journey?.status === 'completed'
+  const moving = (preview || journey?.status === 'active') && !arrived && !settings.reduced_motion
+  const slowing = progress >= 92 && moving
+  const scene = arrived ? 'depot' : world?.region?.scene || 'valley'
   const elapsed =
     journey?.status === 'completed'
       ? (journey.elapsed_seconds ?? journey.duration_minutes * 60)
       : Math.max(0, (journey?.duration_minutes || 0) * 60 - remaining)
   return (
     <section
-      className={`compartment ${settings.crisp_pixels === false ? 'smooth-pixels' : ''} ${moving ? 'in-motion' : ''} ${slowing ? 'slowing' : ''} ${stationApproach ? 'station-approach' : ''} ${arrived ? 'at-station' : ''} ${settings.reduced_motion ? 'reduced' : ''} ${settings.animation_intensity === 'gentle' ? 'motion-gentle' : ''}`}
+      className={`compartment ${settings.crisp_pixels === false ? 'smooth-pixels' : ''} ${moving ? 'in-motion' : ''} ${slowing ? 'slowing' : ''} ${arrived ? 'at-station' : ''} ${settings.reduced_motion ? 'reduced' : ''} ${settings.animation_intensity === 'gentle' ? 'motion-gentle' : ''}`}
       aria-label={t('ui.train_compartment')}
     >
       <PixelWorld
@@ -108,6 +64,7 @@ export default function Compartment({
         weather={settings.weather_effects !== false}
         scene={scene}
         event={world?.event}
+        motionRate={slowing ? Math.max(0.15, (100 - progress) / 8) : 1}
       />
       <div className="cabin-vignette" />
       <div className="cabin-heading">
@@ -163,12 +120,7 @@ export default function Compartment({
           {t('ui.comforts')}{' '}
         </Link>
       )}
-      {arrived && arrivalPhase !== 'depot' && (
-        <button type="button" className="arrival-skip" onClick={() => setArrivalPhase('depot')}>
-          {t('rail.skip_arrival')}
-        </button>
-      )}
-      {arrived && arrivalPhase === 'depot' && (
+      {arrived && (
         <div className="window-arrival" role="status">
           <span>{t('ui.last_stop')}</span>
           <strong>{t('ui.you_ve_arrived')}</strong>
@@ -291,10 +243,10 @@ export default function Compartment({
                   </button>
                 )}
                 {arrived && (
-                  <Link className="board-button" to="/journeys/new">
+                  <button type="button" className="board-button" onClick={onOpenJourney}>
                     <Plus size={14} />
                     {t('ui.new_trip')}{' '}
-                  </Link>
+                  </button>
                 )}
               </div>
             </div>
@@ -313,7 +265,18 @@ export default function Compartment({
                     )}
             </p>
             {!loading && (
-              <Link className="board-button" to={preview ? '/register' : '/journeys/new'}>
+              <Link
+                className="board-button"
+                to={preview ? '/register' : '/journeys/new'}
+                onClick={
+                  preview
+                    ? undefined
+                    : (event) => {
+                        event.preventDefault()
+                        onOpenJourney?.()
+                      }
+                }
+              >
                 {preview ? t('ui.begin_your_journey') : t('ui.take_your_seat')}{' '}
                 <ArrowRight size={14} />
               </Link>
@@ -398,10 +361,10 @@ export default function Compartment({
         )}
       </div>
       {!preview && (
-        <Link className="cabin-new" to="/journeys/new">
+        <button type="button" className="cabin-new" onClick={onOpenJourney}>
           <Plus size={14} />
           {t('ui.plan_a_journey')}{' '}
-        </Link>
+        </button>
       )}
     </section>
   )

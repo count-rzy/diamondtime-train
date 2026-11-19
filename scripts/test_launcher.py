@@ -39,6 +39,16 @@ def main():
                 first_pid = state["pid"]
                 batch("start", "--no-browser")
                 assert json.loads((data / "server.json").read_text())["pid"] == first_pid
+                # A second build must neither reuse the URL nor migrate this profile.
+                incompatible = {**state, "build": "different-portable-build"}
+                (data / "server.json").write_text(json.dumps(incompatible))
+                refused = subprocess.run(
+                    [sys.executable, str(ROOT / "back/launcher.py"), "start", "--no-browser"],
+                    env=env, text=True, capture_output=True,
+                )
+                assert refused.returncode != 0 and "Another Last Train build" in refused.stderr
+                assert psutil.pid_exists(first_pid)
+                (data / "server.json").write_text(json.dumps(state))
                 print(batch("doctor"))
                 print(batch("backup"))
             finally:

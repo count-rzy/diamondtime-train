@@ -79,7 +79,7 @@ def run():
                     launcher.initialize()
         url = launcher.start(no_browser=True)
     logging.info("Last Train ready at %s; existing=%s", url, existing)
-    if not existing and "--no-browser" not in sys.argv:
+    if "--no-browser" not in sys.argv:
         opened = webbrowser.open(url)
         logging.info("Default-browser launch request accepted=%s", opened)
         if not opened:
